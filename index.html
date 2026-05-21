@@ -149,6 +149,41 @@
                     </div>
                 </div>
 
+                <!-- Local File / Protocol Security Warning Screen (Hidden by default) -->
+                <div id="protocol-warning" class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center z-40 hidden p-6 text-center overflow-y-auto">
+                    <div class="h-14 w-14 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-amber-400 text-2xl animate-bounce">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white tracking-wide">Local Protocol (file://) Detected</h3>
+                    <p class="text-xs text-slate-400 mt-2 max-w-md leading-relaxed">
+                        Modern web browsers block webcam access on local files for security. To run this app locally, you must host it on a local secure context (<code class="text-brand-accent bg-slate-900 px-1.5 py-0.5 rounded font-mono">localhost</code>).
+                    </p>
+                    
+                    <div class="mt-5 w-full max-w-md text-left bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3.5">
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider block border-b border-slate-800 pb-1.5">How to Fix This (Choose One):</span>
+                        
+                        <div class="space-y-3 text-xs">
+                            <div>
+                                <p class="text-slate-300 font-semibold"><span class="text-brand-500">Method 1:</span> Using VS Code (Easiest)</p>
+                                <p class="text-slate-400 mt-0.5">Open the file/folder in VS Code, install the <strong class="text-slate-200">Live Server</strong> extension, and click <strong class="text-slate-200">"Go Live"</strong> at the bottom right.</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-slate-300 font-semibold"><span class="text-brand-500">Method 2:</span> Python Command (If installed)</p>
+                                <p class="text-slate-400 mt-0.5">Open your terminal in this folder and run:</p>
+                                <code class="block bg-slate-950 p-2 rounded text-[11px] font-mono text-amber-300 mt-1 select-all border border-slate-800/60">python -m http.server 8000</code>
+                                <p class="text-slate-500 text-[10px] mt-1">Then visit <a href="http://localhost:8000" target="_blank" class="text-brand-accent hover:underline">http://localhost:8000</a> in your browser.</p>
+                            </div>
+
+                            <div>
+                                <p class="text-slate-300 font-semibold"><span class="text-brand-500">Method 3:</span> Node.js / NPM</p>
+                                <p class="text-slate-400 mt-0.5">Run this single terminal command inside your folder:</p>
+                                <code class="block bg-slate-950 p-2 rounded text-[11px] font-mono text-amber-300 mt-1 select-all border border-slate-800/60">npx serve</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Custom Alert Notification Box (Never using alert()) -->
                 <div id="alert-banner" class="absolute top-4 left-4 right-4 z-40 hidden transform translate-y-[-10px] transition-all duration-300">
                     <div class="bg-rose-950/95 border border-rose-500/30 text-rose-200 px-4 py-3 rounded-xl flex items-center justify-between shadow-lg">
@@ -990,6 +1025,13 @@
                 return;
             }
 
+            // Explicit warning if browser doesn't expose the mediaDevices API (typical of file:// protocol)
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                document.getElementById('protocol-warning').classList.remove('hidden');
+                showAlert("Webcam access blocked: Secure browser context is required.");
+                return;
+            }
+
             const deviceId = cameraSelect.value;
             const constraints = {
                 video: deviceId === 'default' ? true : { deviceId: { exact: deviceId } },
@@ -1135,8 +1177,13 @@
             setTimeout(() => { loadProgress.style.width = "40%"; }, 200);
             setTimeout(() => { loadProgress.style.width = "75%"; }, 400);
             
-            getDevices();
-            loadPoseEngine();
+            // Check if application is loaded via insecure file protocol
+            if (window.location.protocol === 'file:') {
+                document.getElementById('protocol-warning').classList.remove('hidden');
+            } else {
+                getDevices();
+                loadPoseEngine();
+            }
             updateOptions();
         };
     </script>
