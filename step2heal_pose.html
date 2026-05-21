@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkelTrack AI - Pose & Biometrics Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            accent: '#10b981', // Emerald
+                            accentLight: '#34d399',
+                            danger: '#f43f5e' // Rose
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- MediaPipe Pose Dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            overflow-x: hidden;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+        /* Glassmorphism panel */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .neon-glow {
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+        }
+        .active-glow {
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+        /* Spinner animation */
+        @keyframes spin-slow {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spin-slow {
+            animation: spin-slow 8s linear infinite;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- Top Nav / Header -->
+    <header class="glass-panel border-b border-slate-800 sticky top-0 z-50 px-4 py-3 lg:px-8">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-500 to-emerald-500 flex items-center justify-center text-white neon-glow">
+                    <i class="fa-solid fa-person-running text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
+                        SkelTrack <span class="text-brand-500">AI</span>
+                    </h1>
+                    <p class="text-[10px] text-slate-400 font-medium tracking-widest uppercase">Biometric Pose & Skeleton Analyzer</p>
+                </div>
+            </div>
+            
+            <!-- Quick Status Badge -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-800">
+                    <span class="relative flex h-2 w-2">
+                        <span id="status-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span id="status-dot" class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                    </span>
+                    <span id="status-text" class="text-xs font-semibold text-slate-300">System Idle</span>
+                </div>
+                <!-- Mini Stats -->
+                <div class="hidden md:flex items-center gap-3 text-xs">
+                    <div class="px-2.5 py-1 rounded bg-slate-800 border border-slate-700">
+                        <span class="text-slate-400">FPS:</span> <span id="fps-val" class="font-bold text-brand-accent">0</span>
+                    </div>
+                    <div class="px-2.5 py-1 rounded bg-slate-800 border border-slate-700">
+                        <span class="text-slate-400">Delay:</span> <span id="latency-val" class="font-bold text-brand-500">0ms</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="max-w-7xl w-full mx-auto px-4 py-6 flex-grow flex flex-col lg:flex-row gap-6">
+        
+        <!-- Left Column: Video Feeds & Visualization (Heavy Viewport) -->
+        <div class="w-full lg:w-[60%] flex flex-col gap-4">
+            <div class="relative glass-panel rounded-2xl overflow-hidden flex flex-col items-center justify-center p-2 min-h-[300px] md:min-h-[480px]">
+                
+                <!-- Loading & Setup Overlay -->
+                <div id="loading-overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center z-30 transition-all duration-500">
+                    <div class="relative flex items-center justify-center mb-6">
+                        <div class="absolute w-24 h-24 rounded-full border-4 border-dashed border-brand-500/20 spin-slow"></div>
+                        <div class="absolute w-20 h-20 rounded-full border-4 border-t-emerald-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                        <div class="h-12 w-12 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
+                            <i class="fa-solid fa-wave-square text-brand-500 animate-pulse text-xl"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-white tracking-wide">Initializing AI Engine</h3>
+                    <p class="text-xs text-slate-400 mt-2 max-w-xs text-center px-4 leading-relaxed">
+                        Loading MediaPipe neural models. Please grant camera permission when prompted.
+                    </p>
+                    <div class="w-48 bg-slate-800 h-1.5 rounded-full mt-4 overflow-hidden">
+                        <div id="load-progress" class="bg-gradient-to-r from-brand-500 to-emerald-500 h-full w-[10%] transition-all duration-300"></div>
+                    </div>
+                </div>
+
+                <!-- Custom Alert Notification Box (Never using alert()) -->
+                <div id="alert-banner" class="absolute top-4 left-4 right-4 z-40 hidden transform translate-y-[-10px] transition-all duration-300">
+                    <div class="bg-rose-950/95 border border-rose-500/30 text-rose-200 px-4 py-3 rounded-xl flex items-center justify-between shadow-lg">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-exclamation text-rose-400 text-lg"></i>
+                            <span id="alert-message" class="text-xs md:text-sm font-medium"></span>
+                        </div>
+                        <button onclick="hideAlert()" class="text-rose-400 hover:text-rose-100 transition-colors">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hidden Input Video Device -->
+                <video id="input-video" class="hidden" playsinline muted autoplay></video>
+                
+                <!-- Interactive Canvas Rendering Pipeline -->
+                <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-800">
+                    <!-- Feed Placeholder text (visible when video isn't active) -->
+                    <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 p-4 text-center">
+                        <i class="fa-solid fa-video-slash text-4xl mb-3 text-slate-700"></i>
+                        <p class="text-sm font-semibold text-slate-400">Camera Feed Inactive</p>
+                        <p class="text-xs text-slate-600 mt-1">Configure sources and click "Activate Webcam" to launch</p>
+                    </div>
+
+                    <!-- Rendering Canvas -->
+                    <canvas id="output-canvas" class="w-full h-full object-contain pointer-events-none z-10 opacity-0 transition-opacity duration-500"></canvas>
+                </div>
+
+                <!-- Canvas Sub-HUD Dashboard Overlay -->
+                <div class="w-full flex justify-between items-center px-2 pt-3 text-xs text-slate-400">
+                    <span id="camera-resolution" class="font-mono bg-slate-900 border border-slate-800 px-2 py-1 rounded">Res: -- x --</span>
+                    <span id="pose-confidence-meter" class="font-mono bg-slate-900 border border-slate-800 px-2 py-1 rounded flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-slate-600 inline-block" id="confidence-indicator"></span> Confidence: <span id="confidence-val">0%</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Frame / Captured Gallery Panel -->
+            <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-images text-brand-500"></i>
+                        <h4 class="text-sm font-semibold">Snapshot Gallery</h4>
+                    </div>
+                    <span class="text-[10px] text-slate-500 font-mono" id="gallery-count">0 images captured</span>
+                </div>
+                <div id="snapshot-gallery" class="flex gap-3 overflow-x-auto pb-2 min-h-[80px] scrollbar">
+                    <!-- Static helper text when empty -->
+                    <div id="gallery-empty" class="text-xs text-slate-600 flex items-center justify-center w-full py-2">
+                        No snapshots taken yet. Press "Capture Frame" to save a session visual.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Interactive Controls & Biometrics Panel -->
+        <div class="w-full lg:w-[40%] flex flex-col gap-4">
+            
+            <!-- System Controls -->
+            <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4">
+                <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-brand-accent"></i>
+                        <h3 class="text-base font-bold text-white">Device & Engine Controls</h3>
+                    </div>
+                    <i class="fa-solid fa-microchip text-slate-500 text-sm"></i>
+                </div>
+
+                <!-- Capture Source Selector -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-camera"></i> Input Source
+                        </label>
+                        <select id="camera-select" class="bg-slate-900/90 border border-slate-800 text-xs text-slate-200 rounded-lg p-2.5 outline-none focus:border-brand-500 transition-colors">
+                            <option value="default">Loading Cameras...</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-gauge"></i> Model Complexity
+                        </label>
+                        <select id="model-complexity" class="bg-slate-900/90 border border-slate-800 text-xs text-slate-200 rounded-lg p-2.5 outline-none focus:border-brand-500 transition-colors">
+                            <option value="0">Lite (Faster, less accurate)</option>
+                            <option value="1" selected>Full (Balanced)</option>
+                            <option value="2">Heavy (Most accurate)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Primary Action Buttons -->
+                <div class="grid grid-cols-2 gap-3 mt-1">
+                    <button id="btn-camera-toggle" class="col-span-1 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
+                        <i class="fa-solid fa-power-off"></i>
+                        <span id="btn-camera-text">Activate Webcam</span>
+                    </button>
+                    <button id="btn-capture" class="col-span-1 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
+                        <i class="fa-solid fa-camera-retro"></i>
+                        Capture Frame
+                    </button>
+                </div>
+            </div>
+
+            <!-- Visualization Toggles -->
+            <div class="glass-panel rounded-2xl p-5 flex flex-col gap-3">
+                <h4 class="text-xs font-bold text-slate-400 tracking-wider uppercase border-b border-slate-800 pb-2">Visualization Parameters</h4>
+                
+                <div class="grid grid-cols-2 gap-3 mt-1">
+                    <!-- Toggle Face elements -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors">
+                        <span class="text-xs font-medium text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-face-smile text-amber-500"></i> Face Overlay
+                        </span>
+                        <input type="checkbox" id="toggle-face" checked class="rounded border-slate-800 text-brand-500 focus:ring-brand-500 bg-slate-900 h-4 w-4">
+                    </label>
+
+                    <!-- Toggle Bones -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors">
+                        <span class="text-xs font-medium text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-grip-lines text-brand-500"></i> Draw Bones
+                        </span>
+                        <input type="checkbox" id="toggle-bones" checked class="rounded border-slate-800 text-brand-500 focus:ring-brand-500 bg-slate-900 h-4 w-4">
+                    </label>
+
+                    <!-- Toggle Hand Points -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors">
+                        <span class="text-xs font-medium text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-hand-holding-hand text-brand-accent"></i> Show Hands
+                        </span>
+                        <input type="checkbox" id="toggle-hands" checked class="rounded border-slate-800 text-brand-500 focus:ring-brand-500 bg-slate-900 h-4 w-4">
+                    </label>
+
+                    <!-- Toggle Neon Glow -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors">
+                        <span class="text-xs font-medium text-slate-300 flex items-center gap-2">
+                            <i class="fa-solid fa-sun text-indigo-400"></i> Neon Glow
+                        </span>
+                        <input type="checkbox" id="toggle-glow" checked class="rounded border-slate-800 text-brand-500 focus:ring-brand-500 bg-slate-900 h-4 w-4">
+                    </label>
+                </div>
+
+                <!-- Color picker and thickness slider -->
+                <div class="mt-2 space-y-3">
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-palette"></i> Skeleton Theme
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <button class="theme-dot w-6 h-6 rounded-full bg-indigo-500 ring-2 ring-white ring-offset-2 ring-offset-slate-950" data-color="#6366f1"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-emerald-500" data-color="#10b981"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-rose-500" data-color="#f43f5e"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-amber-500" data-color="#f59e0b"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-sky-400" data-color="#38bdf8"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Bio-metrics & Analysis -->
+            <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4 flex-grow">
+                <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-square-poll-vertical text-brand-accent"></i>
+                        <h3 class="text-base font-bold text-white">Posture & Angle Analytics</h3>
+                    </div>
+                    <span id="posture-state-badge" class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-slate-800 text-slate-400">
+                        Analyzing...
+                    </span>
+                </div>
+
+                <!-- Posture Score & Main Alert -->
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Posture Card -->
+                    <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex flex-col items-center justify-center text-center">
+                        <div class="relative w-16 h-16 flex items-center justify-center mb-1">
+                            <!-- Circular Progress Bar -->
+                            <svg class="w-full h-full transform -rotate-90">
+                                <circle cx="32" cy="32" r="28" stroke="#1e293b" stroke-width="5" fill="transparent" />
+                                <circle id="posture-score-circle" cx="32" cy="32" r="28" stroke="#10b981" stroke-width="5" fill="transparent" stroke-dasharray="175.9" stroke-dashoffset="175.9" class="transition-all duration-300" />
+                            </svg>
+                            <span id="posture-score-text" class="absolute font-extrabold text-sm text-white">0%</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Posture Quality</span>
+                    </div>
+
+                    <!-- Alignment Monitor -->
+                    <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-[11px]">
+                                <span class="text-slate-400">Shoulders:</span>
+                                <span id="alignment-shoulders" class="font-mono text-slate-300 font-bold">Uncalibrated</span>
+                            </div>
+                            <div class="flex justify-between text-[11px]">
+                                <span class="text-slate-400">Hips:</span>
+                                <span id="alignment-hips" class="font-mono text-slate-300 font-bold">Uncalibrated</span>
+                            </div>
+                            <div class="flex justify-between text-[11px]">
+                                <span class="text-slate-400">Leaning:</span>
+                                <span id="alignment-leaning" class="font-mono text-slate-300 font-bold">Uncalibrated</span>
+                            </div>
+                        </div>
+                        <p id="posture-tips" class="text-[10px] text-slate-500 italic text-center mt-1">Stand straight to initialize track.</p>
+                    </div>
+                </div>
+
+                <!-- Live Joint Angles Area -->
+                <div class="space-y-3">
+                    <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Dynamic Joint Flex Angles</h5>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- Elbow Angle (Left vs Right) -->
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                            <div class="flex justify-between items-center text-xs mb-2">
+                                <span class="font-semibold text-slate-300 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Elbow Flex
+                                </span>
+                                <i class="fa-solid fa-angles-right text-[10px] text-slate-600"></i>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                                    <span>L: <span id="angle-elbow-l" class="text-slate-200">0°</span></span>
+                                    <span>R: <span id="angle-elbow-r" class="text-slate-200">0°</span></span>
+                                </div>
+                                <div class="h-1 bg-slate-800 rounded-full overflow-hidden flex">
+                                    <div id="bar-elbow-l" class="bg-brand-500 h-full w-[0%] transition-all duration-100"></div>
+                                    <div id="bar-elbow-r" class="bg-cyan-500 h-full w-[0%] transition-all duration-100 border-l border-slate-900"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Knee Angle -->
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                            <div class="flex justify-between items-center text-xs mb-2">
+                                <span class="font-semibold text-slate-300 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-brand-accent"></span> Knee Flex
+                                </span>
+                                <i class="fa-solid fa-angles-right text-[10px] text-slate-600"></i>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                                    <span>L: <span id="angle-knee-l" class="text-slate-200">0°</span></span>
+                                    <span>R: <span id="angle-knee-r" class="text-slate-200">0°</span></span>
+                                </div>
+                                <div class="h-1 bg-slate-800 rounded-full overflow-hidden flex">
+                                    <div id="bar-knee-l" class="bg-brand-accent h-full w-[0%] transition-all duration-100"></div>
+                                    <div id="bar-knee-r" class="bg-emerald-300 h-full w-[0%] transition-all duration-100 border-l border-slate-900"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hip Angle -->
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 col-span-2">
+                            <div class="flex justify-between items-center text-xs mb-2">
+                                <span class="font-semibold text-slate-300 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Trunk/Hip Flex
+                                </span>
+                                <i class="fa-solid fa-angles-right text-[10px] text-slate-600"></i>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                                    <span>Left Hip: <span id="angle-hip-l" class="text-slate-200">0°</span></span>
+                                    <span>Right Hip: <span id="angle-hip-r" class="text-slate-200">0°</span></span>
+                                </div>
+                                <div class="h-1 bg-slate-800 rounded-full overflow-hidden flex">
+                                    <div id="bar-hip-l" class="bg-amber-500 h-full w-[0%] transition-all duration-100"></div>
+                                    <div id="bar-hip-r" class="bg-yellow-300 h-full w-[0%] transition-all duration-100 border-l border-slate-900"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="glass-panel border-t border-slate-800 text-center py-4 px-4 text-xs text-slate-500 mt-6">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+            <p>Engine powered by MediaPipe Pose Model & WebGL Acceleration.</p>
+            <div class="flex gap-4">
+                <span class="hover:text-slate-300 cursor-help transition-colors" title="Front-facing model calibrated for full-body tracking at 2-5m.">Calibrated for: Full-Body (2-5m)</span>
+                <span>•</span>
+                <span class="hover:text-slate-300 cursor-help transition-colors" title="All processing happens locally on your computer. Camera data never leaves your device.">Privacy: Local-Only AI</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Set state properties
+        const state = {
+            activeColor: '#6366f1',
+            videoActive: false,
+            modelLoaded: false,
+            lastFrameTime: 0,
+            fpsInterval: null,
+            latencySum: 0,
+            latencyCount: 0,
+            options: {
+                face: true,
+                bones: true,
+                hands: true,
+                glow: true
+            }
+        };
+
+        // DOM elements
+        const videoElement = document.getElementById('input-video');
+        const canvasElement = document.getElementById('output-canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const cameraSelect = document.getElementById('camera-select');
+        const modelComplexitySelect = document.getElementById('model-complexity');
+        const btnCameraToggle = document.getElementById('btn-camera-toggle');
+        const btnCameraText = document.getElementById('btn-camera-text');
+        const btnCapture = document.getElementById('btn-capture');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadProgress = document.getElementById('load-progress');
+        const alertBanner = document.getElementById('alert-banner');
+        const alertMessage = document.getElementById('alert-message');
+        const fpsVal = document.getElementById('fps-val');
+        const latencyVal = document.getElementById('latency-val');
+        const statusPulse = document.getElementById('status-pulse');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const placeholder = document.getElementById('video-placeholder');
+        const resolutionLabel = document.getElementById('camera-resolution');
+        const confidenceVal = document.getElementById('confidence-val');
+        const confidenceIndicator = document.getElementById('confidence-indicator');
+        const snapshotGallery = document.getElementById('snapshot-gallery');
+        const galleryEmptyText = document.getElementById('gallery-empty');
+        const galleryCountLabel = document.getElementById('gallery-count');
+
+        // Toggle elements
+        const toggleFace = document.getElementById('toggle-face');
+        const toggleBones = document.getElementById('toggle-bones');
+        const toggleHands = document.getElementById('toggle-hands');
+        const toggleGlow = document.getElementById('toggle-glow');
+
+        // Angle & Posture UI Outputs
+        const angleElbowL = document.getElementById('angle-elbow-l');
+        const angleElbowR = document.getElementById('angle-elbow-r');
+        const barElbowL = document.getElementById('bar-elbow-l');
+        const barElbowR = document.getElementById('bar-elbow-r');
+
+        const angleKneeL = document.getElementById('angle-knee-l');
+        const angleKneeR = document.getElementById('angle-knee-r');
+        const barKneeL = document.getElementById('bar-knee-l');
+        const barKneeR = document.getElementById('bar-knee-r');
+
+        const angleHipL = document.getElementById('angle-hip-l');
+        const angleHipR = document.getElementById('angle-hip-r');
+        const barHipL = document.getElementById('bar-hip-l');
+        const barHipR = document.getElementById('bar-hip-r');
+
+        const postureScoreText = document.getElementById('posture-score-text');
+        const postureScoreCircle = document.getElementById('posture-score-circle');
+        const postureStateBadge = document.getElementById('posture-state-badge');
+        const alignShoulders = document.getElementById('alignment-shoulders');
+        const alignHips = document.getElementById('alignment-hips');
+        const alignLeaning = document.getElementById('alignment-leaning');
+        const postureTips = document.getElementById('posture-tips');
+
+        let poseTracker = null;
+        let activeStream = null;
+        let poseCamera = null;
+        let frameCount = 0;
+        let fpsStartTime = performance.now();
+
+        // Safe Alert Mechanism instead of alert()
+        function showAlert(msg) {
+            alertMessage.textContent = msg;
+            alertBanner.classList.remove('hidden');
+            alertBanner.classList.remove('translate-y-[-10px]');
+            alertBanner.classList.add('translate-y-0');
+            setTimeout(() => {
+                hideAlert();
+            }, 6000);
+        }
+
+        function hideAlert() {
+            alertBanner.classList.add('translate-y-[-10px]');
+            setTimeout(() => {
+                alertBanner.classList.add('hidden');
+            }, 300);
+        }
+
+        // Initialize theme selector
+        document.querySelectorAll('.theme-dot').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-slate-950'));
+                e.target.classList.add('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-slate-950');
+                state.activeColor = e.target.getAttribute('data-color');
+            });
+        });
+
+        // Initialize options from UI toggles
+        function updateOptions() {
+            state.options.face = toggleFace.checked;
+            state.options.bones = toggleBones.checked;
+            state.options.hands = toggleHands.checked;
+            state.options.glow = toggleGlow.checked;
+        }
+
+        [toggleFace, toggleBones, toggleHands, toggleGlow].forEach(el => el.addEventListener('change', updateOptions));
+
+        // Get video input list
+        async function getDevices() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                cameraSelect.innerHTML = '';
+                if(videoDevices.length === 0) {
+                    const opt = document.createElement('option');
+                    opt.value = "none";
+                    opt.text = "No cameras detected";
+                    cameraSelect.appendChild(opt);
+                    return;
+                }
+
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${index + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+            } catch (err) {
+                showAlert("Could not list video inputs: " + err.message);
+            }
+        }
+
+        // Helper Math to find 2D/3D angle in degrees
+        function calculateAngle(A, B, C) {
+            if (!A || !B || !C) return 0;
+            // 2D Vector calculations (highly robust for plane-projections)
+            const BA = { x: A.x - B.x, y: A.y - B.y };
+            const BC = { x: C.x - B.x, y: C.y - B.y };
+
+            const dotProduct = BA.x * BC.x + BA.y * BC.y;
+            const magBA = Math.sqrt(BA.x * BA.x + BA.y * BA.y);
+            const magBC = Math.sqrt(BC.x * BC.x + BC.y * BC.y);
+
+            if (magBA * magBC === 0) return 0;
+            
+            let cosTheta = dotProduct / (magBA * magBC);
+            // Cap to avoid rounding precision floating-point error out of [-1, 1] range
+            cosTheta = Math.max(-1, Math.min(1, cosTheta));
+            
+            const angleRad = Math.acos(cosTheta);
+            return Math.round((angleRad * 180) / Math.PI);
+        }
+
+        // Updates Circular Progress Bar
+        function setPostureProgress(score) {
+            postureScoreText.textContent = `${score}%`;
+            const r = 28;
+            const circ = 2 * Math.PI * r;
+            const offset = circ - (score / 100) * circ;
+            postureScoreCircle.style.strokeDashoffset = offset;
+
+            // Shift colors depending on posture rating
+            if(score >= 80) {
+                postureScoreCircle.setAttribute('stroke', '#10b981'); // Emerald
+                postureStateBadge.textContent = "Excellent";
+                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-emerald-950 text-emerald-400";
+            } else if (score >= 60) {
+                postureScoreCircle.setAttribute('stroke', '#eab308'); // Yellow
+                postureStateBadge.textContent = "Moderate";
+                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-yellow-950 text-yellow-400";
+            } else {
+                postureScoreCircle.setAttribute('stroke', '#f43f5e'); // Rose
+                postureStateBadge.textContent = "Poor / Slouching";
+                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-rose-950 text-rose-400";
+            }
+        }
+
+        // Custom draw connectors with glowing properties
+        function drawSegment(ctx, p1, p2, color, thickness, hasGlow) {
+            if (!p1 || !p2 || p1.visibility < 0.5 || p2.visibility < 0.5) return;
+            
+            ctx.beginPath();
+            ctx.moveTo(p1.x * canvasElement.width, p1.y * canvasElement.height);
+            ctx.lineTo(p2.x * canvasElement.width, p2.y * canvasElement.height);
+
+            if (hasGlow) {
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+            } else {
+                ctx.shadowBlur = 0;
+            }
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = thickness;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+            ctx.shadowBlur = 0; // Reset
+        }
+
+        function drawJointDot(ctx, point, color, size, hasGlow) {
+            if (!point || point.visibility < 0.5) return;
+            
+            ctx.beginPath();
+            ctx.arc(point.x * canvasElement.width, point.y * canvasElement.height, size, 0, 2 * Math.PI);
+            ctx.fillStyle = color;
+            
+            if (hasGlow) {
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 12;
+            }
+            ctx.fill();
+            ctx.shadowBlur = 0; // Reset
+            
+            // Outer white concentric circle for tech aesthetics
+            ctx.beginPath();
+            ctx.arc(point.x * canvasElement.width, point.y * canvasElement.height, size + 2, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+
+        // Main Rendering Frame Callback
+        function onPoseResults(results) {
+            // Measure engine pipeline latency
+            const now = performance.now();
+            const frameLatency = Math.round(now - state.lastFrameTime);
+            state.lastFrameTime = now;
+            
+            if (state.latencyCount < 10) {
+                state.latencySum += frameLatency;
+                state.latencyCount++;
+            } else {
+                latencyVal.textContent = `${Math.round(state.latencySum / state.latencyCount)}ms`;
+                state.latencySum = frameLatency;
+                state.latencyCount = 1;
+            }
+
+            // Frame count calculation
+            frameCount++;
+            const totalElapsed = now - fpsStartTime;
+            if (totalElapsed >= 1000) {
+                fpsVal.textContent = Math.round((frameCount * 1000) / totalElapsed);
+                frameCount = 0;
+                fpsStartTime = now;
+            }
+
+            // Canvas preparation
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            // Draw camera frame mirroring source
+            canvasCtx.translate(canvasElement.width, 0);
+            canvasCtx.scale(-1, 1);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.restore(); // Restore mirroring transforms
+
+            // Verify landmarks exist
+            if (results.poseLandmarks) {
+                const landmarks = results.poseLandmarks;
+                
+                // Track dynamic visualization overrides
+                const drawBones = state.options.bones;
+                const drawFace = state.options.face;
+                const drawHands = state.options.hands;
+                const enableGlow = state.options.glow;
+                
+                const themeColor = state.activeColor;
+                const accentColor = "#10b981"; // Emerald green
+                
+                // Confidence estimation
+                let totalVis = 0;
+                landmarks.forEach(lm => totalVis += lm.visibility);
+                const meanConfidence = Math.round((totalVis / landmarks.length) * 100);
+                confidenceVal.textContent = `${meanConfidence}%`;
+                
+                if (meanConfidence > 75) {
+                    confidenceIndicator.className = "w-2 h-2 rounded-full bg-emerald-500 inline-block";
+                } else if (meanConfidence > 50) {
+                    confidenceIndicator.className = "w-2 h-2 rounded-full bg-yellow-500 inline-block";
+                } else {
+                    confidenceIndicator.className = "w-2 h-2 rounded-full bg-rose-500 inline-block";
+                }
+
+                // Core Pose & Posture Computations
+                processPostureMetrics(landmarks);
+
+                // Re-mirror landmarks dynamically so we don't draw standard joints in reverse
+                const mirroredLandmarks = landmarks.map(lm => ({
+                    x: 1 - lm.x, // Flip X coordinate to align with mirrored webcam view
+                    y: lm.y,
+                    z: lm.z,
+                    visibility: lm.visibility
+                }));
+
+                // Draw Core Bones (Connecting joints)
+                if (drawBones) {
+                    // Face Connectors (if toggled)
+                    if (drawFace) {
+                        const nose = mirroredLandmarks[0];
+                        const leftEye = mirroredLandmarks[2];
+                        const rightEye = mirroredLandmarks[5];
+                        const leftEar = mirroredLandmarks[7];
+                        const rightEar = mirroredLandmarks[8];
+
+                        drawSegment(canvasCtx, nose, leftEye, '#94a3b8', 2, false);
+                        drawSegment(canvasCtx, nose, rightEye, '#94a3b8', 2, false);
+                        drawSegment(canvasCtx, leftEye, leftEar, '#94a3b8', 1.5, false);
+                        drawSegment(canvasCtx, rightEye, rightEar, '#94a3b8', 1.5, false);
+                    }
+
+                    // Upper Torso & Shoulders
+                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[12], themeColor, 4, enableGlow); // Shoulder to shoulder
+                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[23], themeColor, 3.5, enableGlow); // Left shoulder to hip
+                    drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[24], themeColor, 3.5, enableGlow); // Right shoulder to hip
+                    drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[24], themeColor, 4, enableGlow); // Hip to hip
+
+                    // Left Arm Segment
+                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[13], themeColor, 3, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[13], mirroredLandmarks[15], themeColor, 3, enableGlow);
+
+                    // Right Arm Segment
+                    drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[14], themeColor, 3, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[14], mirroredLandmarks[16], themeColor, 3, enableGlow);
+
+                    // Left Leg Segment
+                    drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[25], themeColor, 3.5, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[25], mirroredLandmarks[27], themeColor, 3.5, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[29], themeColor, 2, false); // Foot heels/ankles
+                    drawSegment(canvasCtx, mirroredLandmarks[29], mirroredLandmarks[31], themeColor, 2.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[31], themeColor, 2, false);
+
+                    // Right Leg Segment
+                    drawSegment(canvasCtx, mirroredLandmarks[24], mirroredLandmarks[26], themeColor, 3.5, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[26], mirroredLandmarks[28], themeColor, 3.5, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[30], themeColor, 2, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[30], mirroredLandmarks[32], themeColor, 2.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[32], themeColor, 2, false);
+                }
+
+                // Draw Joint Knuckles / Core Dots
+                // Face Points
+                if (drawFace) {
+                    const faceIndices = [0, 2, 5, 7, 8];
+                    faceIndices.forEach(idx => {
+                        drawJointDot(canvasCtx, mirroredLandmarks[idx], '#f59e0b', 4, false); // Amber color for face reference
+                    });
+                }
+
+                // Arms / Legs / Body joints
+                const bodyJoints = [11, 12, 13, 14, 23, 24, 25, 26, 27, 28];
+                bodyJoints.forEach(idx => {
+                    drawJointDot(canvasCtx, mirroredLandmarks[idx], themeColor, 6, enableGlow);
+                });
+
+                // Hands Elements
+                if (drawHands) {
+                    const leftHandGroup = [15, 17, 19, 21];
+                    const rightHandGroup = [16, 18, 20, 22];
+
+                    // Draw connecting segments for hand extremities
+                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[17], accentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[19], accentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[21], accentColor, 1.5, false);
+
+                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[18], accentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[20], accentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[22], accentColor, 1.5, false);
+
+                    leftHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], accentColor, 4, false));
+                    rightHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], accentColor, 4, false));
+                }
+            }
+        }
+
+        // Processing & Extracting Posture/Joint Analytics
+        function processPostureMetrics(landmarks) {
+            // Get relevant joints
+            const lShoulder = landmarks[11];
+            const rShoulder = landmarks[12];
+            const lElbow = landmarks[13];
+            const rElbow = landmarks[14];
+            const lWrist = landmarks[15];
+            const rWrist = landmarks[16];
+            const lHip = landmarks[23];
+            const rHip = landmarks[24];
+            const lKnee = landmarks[25];
+            const rKnee = landmarks[26];
+            const lAnkle = landmarks[27];
+            const rAnkle = landmarks[28];
+            const nose = landmarks[0];
+
+            // 1. Compute Angles
+            const flexElbowL = calculateAngle(lShoulder, lElbow, lWrist);
+            const flexElbowR = calculateAngle(rShoulder, rElbow, rWrist);
+            const flexKneeL = calculateAngle(lHip, lKnee, lAnkle);
+            const flexKneeR = calculateAngle(rHip, rKnee, rAnkle);
+            const flexHipL = calculateAngle(lShoulder, lHip, lKnee);
+            const flexHipR = calculateAngle(rShoulder, rHip, rKnee);
+
+            // Update display angles
+            angleElbowL.textContent = `${flexElbowL}°`;
+            angleElbowR.textContent = `${flexElbowR}°`;
+            barElbowL.style.width = `${Math.min(100, (flexElbowL / 180) * 100)}%`;
+            barElbowR.style.width = `${Math.min(100, (flexElbowR / 180) * 100)}%`;
+
+            angleKneeL.textContent = `${flexKneeL}°`;
+            angleKneeR.textContent = `${flexKneeR}°`;
+            barKneeL.style.width = `${Math.min(100, (flexKneeL / 180) * 100)}%`;
+            barKneeR.style.width = `${Math.min(100, (flexKneeR / 180) * 100)}%`;
+
+            angleHipL.textContent = `${flexHipL}°`;
+            angleHipR.textContent = `${flexHipR}°`;
+            barHipL.style.width = `${Math.min(100, (flexHipL / 180) * 100)}%`;
+            barHipR.style.width = `${Math.min(100, (flexHipR / 180) * 100)}%`;
+
+            // 2. Compute Alignments for Posture Scoring (Y coordinates: top of screen is 0, bottom is 1)
+            let postureScore = 100;
+            let feedbackTips = [];
+
+            if (lShoulder.visibility > 0.6 && rShoulder.visibility > 0.6) {
+                const shoulderDelta = Math.abs(lShoulder.y - rShoulder.y);
+                if (shoulderDelta > 0.04) {
+                    const pctDiff = Math.min(30, Math.round(shoulderDelta * 300));
+                    postureScore -= pctDiff;
+                    alignShoulders.textContent = "Uneven";
+                    alignShoulders.className = "font-mono text-rose-400 font-bold";
+                    feedbackTips.push("Level your shoulders.");
+                } else {
+                    alignShoulders.textContent = "Aligned";
+                    alignShoulders.className = "font-mono text-emerald-400 font-bold";
+                }
+            } else {
+                alignShoulders.textContent = "Detecting...";
+                alignShoulders.className = "font-mono text-slate-500 font-bold";
+            }
+
+            if (lHip.visibility > 0.6 && rHip.visibility > 0.6) {
+                const hipDelta = Math.abs(lHip.y - rHip.y);
+                if (hipDelta > 0.04) {
+                    const pctDiff = Math.min(25, Math.round(hipDelta * 250));
+                    postureScore -= pctDiff;
+                    alignHips.textContent = "Tilted";
+                    alignHips.className = "font-mono text-rose-400 font-bold";
+                    feedbackTips.push("Balance weight evenly.");
+                } else {
+                    alignHips.textContent = "Aligned";
+                    alignHips.className = "font-mono text-emerald-400 font-bold";
+                }
+            } else {
+                alignHips.textContent = "Detecting...";
+                alignHips.className = "font-mono text-slate-500 font-bold";
+            }
+
+            // Head forward alignment / Leaning (compare nose to neck center)
+            if (nose.visibility > 0.6 && lShoulder.visibility > 0.6 && rShoulder.visibility > 0.6) {
+                const shoulderCenterX = (lShoulder.x + rShoulder.x) / 2;
+                const headLeaningX = Math.abs(nose.x - shoulderCenterX);
+
+                if (headLeaningX > 0.08) {
+                    const leanPenalty = Math.min(25, Math.round(headLeaningX * 200));
+                    postureScore -= leanPenalty;
+                    alignLeaning.textContent = "Leaning";
+                    alignLeaning.className = "font-mono text-amber-400 font-bold";
+                    feedbackTips.push("Align head centered.");
+                } else {
+                    alignLeaning.textContent = "Centered";
+                    alignLeaning.className = "font-mono text-emerald-400 font-bold";
+                }
+            } else {
+                alignLeaning.textContent = "Detecting...";
+                alignLeaning.className = "font-mono text-slate-500 font-bold";
+            }
+
+            // Fallback posture scoring constraints
+            postureScore = Math.max(0, postureScore);
+            setPostureProgress(postureScore);
+
+            if (feedbackTips.length > 0) {
+                postureTips.textContent = feedbackTips.join(' ');
+            } else if (lShoulder.visibility > 0.5) {
+                postureTips.textContent = "Great alignment! Keep this pose.";
+            } else {
+                postureTips.textContent = "Please stand in frame view.";
+            }
+        }
+
+        // Initialize MediaPipe Pose Engine
+        function loadPoseEngine() {
+            try {
+                poseTracker = new Pose({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+                    }
+                });
+
+                // Configure pose model parameters
+                poseTracker.setOptions({
+                    modelComplexity: parseInt(modelComplexitySelect.value),
+                    smoothLandmarks: true,
+                    enableSegmentation: false,
+                    smoothSegmentation: false,
+                    minDetectionConfidence: 0.55,
+                    minTrackingConfidence: 0.55
+                });
+
+                // Set callback result handler
+                poseTracker.onResults(onPoseResults);
+                
+                state.modelLoaded = true;
+                loadProgress.style.width = "100%";
+                
+                // Hide loading overlay smoothly
+                setTimeout(() => {
+                    loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
+                    statusPulse.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
+                    statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
+                    statusText.textContent = "Engine Ready";
+                }, 600);
+
+            } catch (err) {
+                showAlert("Failed to initialize Pose Engine: " + err.message);
+                loadProgress.style.backgroundColor = "#f43f5e";
+            }
+        }
+
+        // Handle camera option modification
+        modelComplexitySelect.addEventListener('change', () => {
+            if (poseTracker) {
+                poseTracker.setOptions({
+                    modelComplexity: parseInt(modelComplexitySelect.value)
+                });
+            }
+        });
+
+        // Initialize user device video
+        async function startCameraSession() {
+            if (!state.modelLoaded) {
+                showAlert("Model engine is currently initializing, please wait.");
+                return;
+            }
+
+            const deviceId = cameraSelect.value;
+            const constraints = {
+                video: deviceId === 'default' ? true : { deviceId: { exact: deviceId } },
+                audio: false
+            };
+
+            try {
+                // Clear any running stream
+                if (activeStream) {
+                    activeStream.getTracks().forEach(track => track.stop());
+                }
+
+                activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = activeStream;
+                await videoElement.play();
+
+                // Get dynamic aspect-ratio sizing
+                videoElement.onloadedmetadata = () => {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    resolutionLabel.textContent = `Res: ${videoElement.videoWidth} x ${videoElement.videoHeight}`;
+                };
+
+                // Setup MediaPipe camera pipeline loop
+                poseCamera = new Camera(videoElement, {
+                    onFrame: async () => {
+                        if (state.videoActive) {
+                            await poseTracker.send({ image: videoElement });
+                        }
+                    },
+                    width: 640,
+                    height: 480
+                });
+
+                await poseCamera.start();
+
+                state.videoActive = true;
+                btnCameraText.textContent = "Pause Session";
+                btnCameraToggle.className = "col-span-1 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]";
+                
+                statusPulse.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
+                statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
+                statusText.textContent = "Live Tracking";
+                placeholder.classList.add('hidden');
+                canvasElement.classList.remove('opacity-0');
+                canvasElement.classList.add('opacity-100');
+
+            } catch (err) {
+                showAlert("Failed to access camera feed: " + err.message);
+                state.videoActive = false;
+                btnCameraText.textContent = "Activate Webcam";
+            }
+        }
+
+        // Toggle webcam activity state
+        function toggleWebcam() {
+            if (state.videoActive) {
+                // Pause pipeline processing
+                state.videoActive = false;
+                if (activeStream) {
+                    activeStream.getTracks().forEach(track => track.stop());
+                }
+                if (poseCamera) {
+                    poseCamera.stop();
+                }
+                btnCameraText.textContent = "Activate Webcam";
+                btnCameraToggle.className = "col-span-1 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]";
+                
+                statusPulse.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
+                statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
+                statusText.textContent = "Engine Paused";
+                placeholder.classList.remove('hidden');
+                canvasElement.classList.add('opacity-0');
+                canvasElement.classList.remove('opacity-100');
+            } else {
+                startCameraSession();
+            }
+        }
+
+        btnCameraToggle.addEventListener('click', toggleWebcam);
+
+        // Capture snapshot from canvas frame
+        let snapCount = 0;
+        btnCapture.addEventListener('click', () => {
+            if(!state.videoActive) {
+                showAlert("Capture rejected: Web camera feed is currently inactive.");
+                return;
+            }
+
+            const dataURL = canvasElement.toDataURL('image/png');
+            
+            // Remove empty gallery helper
+            if(galleryEmptyText) {
+                galleryEmptyText.remove();
+            }
+
+            snapCount++;
+            galleryCountLabel.textContent = `${snapCount} image${snapCount > 1 ? 's' : ''} captured`;
+
+            // Create canvas card element
+            const card = document.createElement('div');
+            card.className = "relative min-w-[120px] w-[120px] aspect-video bg-slate-900 rounded-lg border border-slate-800 overflow-hidden group hover:border-brand-500 transition-all cursor-pointer";
+            
+            const img = document.createElement('img');
+            img.src = dataURL;
+            img.className = "w-full h-full object-cover";
+            
+            const overlay = document.createElement('div');
+            overlay.className = "absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity";
+            
+            // Download snapshot
+            const btnDl = document.createElement('a');
+            btnDl.href = dataURL;
+            btnDl.download = `skeltrack_capture_${Date.now()}.png`;
+            btnDl.innerHTML = `<i class="fa-solid fa-download text-white text-xs p-1.5 bg-brand-500 rounded hover:bg-brand-600 transition-colors"></i>`;
+            
+            // Remove element button
+            const btnDel = document.createElement('button');
+            btnDel.innerHTML = `<i class="fa-solid fa-trash text-white text-xs p-1.5 bg-rose-500 rounded hover:bg-rose-600 transition-colors"></i>`;
+            btnDel.addEventListener('click', (e) => {
+                e.stopPropagation();
+                card.remove();
+                snapCount--;
+                galleryCountLabel.textContent = `${snapCount} image${snapCount > 1 ? 's' : ''} captured`;
+                if(snapCount === 0) {
+                    snapshotGallery.appendChild(galleryEmptyText);
+                }
+            });
+
+            overlay.appendChild(btnDl);
+            overlay.appendChild(btnDel);
+            card.appendChild(img);
+            card.appendChild(overlay);
+
+            snapshotGallery.insertBefore(card, snapshotGallery.firstChild);
+            // Auto scroll gallery to newest snapshot
+            snapshotGallery.scrollLeft = 0;
+        });
+
+        // Initialize setup on window load
+        window.onload = () => {
+            // Progressive load simulation
+            setTimeout(() => { loadProgress.style.width = "40%"; }, 200);
+            setTimeout(() => { loadProgress.style.width = "75%"; }, 400);
+            
+            getDevices();
+            loadPoseEngine();
+            updateOptions();
+        };
+    </script>
+</body>
+</html>
