@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkelTrack AI - Pose & Biometrics Dashboard</title>
+    <title>Step2track - Posture & Skeleton Recovery Analyzer</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
                         brand: {
-                            50: '#eef2ff',
-                            100: '#e0e7ff',
-                            500: '#6366f1',
-                            600: '#4f46e5',
-                            700: '#4338ca',
-                            accent: '#10b981', // Emerald
-                            accentLight: '#34d399',
-                            danger: '#f43f5e' // Rose
+                            50: '#f0fdfa',  // Soft teal-50
+                            100: '#ccfbf1', // Soft teal-100
+                            500: '#0d9488', // Medical Teal-600
+                            600: '#0f766e', // Deep Teal-700
+                            700: '#115e59', // Clinical Teal-800
+                            accent: '#14b8a6', // Teal Accent
+                            orange: '#f97316', // Orange Tagline Accents
+                            charcoal: '#1e293b', // Slate-800 Charcoal Text
+                            muted: '#475569' // Slate-600
                         }
                     },
                     fontFamily: {
@@ -34,89 +34,83 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- MediaPipe Pose Core Dependency (REMOVED camera_utils.js to prevent double-claim conflicts) -->
+    <!-- MediaPipe Pose Core Dependency -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #0b0f19;
-            color: #f3f4f6;
+            background-color: #f8fafc; /* Clean slate-50 background */
+            color: #1e293b; /* Charcoal text */
             overflow-x: hidden;
         }
         .code-font {
             font-family: 'JetBrains Mono', monospace;
         }
-        /* Custom scrollbar */
+        /* Custom scrollbar matching minimalist theme */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
         }
         ::-webkit-scrollbar-track {
-            background: #0f172a;
+            background: #f1f5f9;
         }
         ::-webkit-scrollbar-thumb {
-            background: #334155;
+            background: #cbd5e1;
             border-radius: 4px;
         }
         ::-webkit-scrollbar-thumb:hover {
-            background: #475569;
+            background: #94a3b8;
         }
-        /* Glassmorphism panel */
-        .glass-panel {
-            background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+        /* Soft Shadow card panels */
+        .clinic-panel {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
         }
-        .neon-glow {
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+        .teal-glow {
+            box-shadow: 0 0 20px rgba(13, 148, 136, 0.15);
         }
         .active-glow {
-            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
-        }
-        /* Spinner animation */
-        @keyframes spin-slow {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .spin-slow {
-            animation: spin-slow 8s linear infinite;
+            box-shadow: 0 0 25px rgba(20, 184, 166, 0.3);
         }
     </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between">
 
     <!-- Top Nav / Header -->
-    <header class="glass-panel border-b border-slate-800 sticky top-0 z-50 px-4 py-3 lg:px-8">
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 px-4 py-3 lg:px-8 shadow-sm">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-brand-500 to-emerald-500 flex items-center justify-center text-white neon-glow">
-                    <i class="fa-solid fa-person-running text-lg"></i>
+            <!-- Brand Logo & Tagline -->
+            <div class="flex items-center gap-4">
+                <div class="h-14 w-14 rounded-xl bg-white p-1 border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
+                    <!-- Loaded local logo step2heal.jpeg -->
+                    <img src="step2heal.jpeg" alt="Step2track Logo" class="h-full w-full object-contain rounded" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=100';">
                 </div>
                 <div>
-                    <h1 class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent">
-                        SkelTrack <span class="text-brand-500">AI</span>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-800 flex items-center gap-1.5">
+                        Step2track <span class="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full border border-teal-200 font-bold uppercase tracking-wide">Posture AI</span>
                     </h1>
-                    <p class="text-[10px] text-slate-400 font-medium tracking-widest uppercase">Biometric Pose & Skeleton Analyzer</p>
+                    <p class="text-xs text-orange-500 font-semibold italic tracking-wide">where every step matters</p>
                 </div>
             </div>
             
-            <!-- Quick Status Badge -->
+            <!-- System Connections Status Dashboard -->
             <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/90 border border-slate-800">
-                    <span class="relative flex h-2 w-2">
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
+                    <span class="relative flex h-2.5 w-2.5">
                         <span id="status-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span id="status-dot" class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                        <span id="status-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
                     </span>
-                    <span id="status-text" class="text-xs font-semibold text-slate-300">System Idle</span>
+                    <span id="status-text" class="text-xs font-semibold text-slate-600">System Idle</span>
                 </div>
                 <!-- Mini Stats -->
-                <div class="hidden md:flex items-center gap-3 text-xs">
-                    <div class="px-2.5 py-1 rounded bg-slate-800 border border-slate-700">
-                        <span class="text-slate-400">FPS:</span> <span id="fps-val" class="font-bold text-brand-accent">0</span>
+                <div class="hidden md:flex items-center gap-2 text-xs">
+                    <div class="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200">
+                        <span class="text-slate-500">FPS:</span> <span id="fps-val" class="font-bold text-teal-600">0</span>
                     </div>
-                    <div class="px-2.5 py-1 rounded bg-slate-800 border border-slate-700">
-                        <span class="text-slate-400">Delay:</span> <span id="latency-val" class="font-bold text-brand-500">0ms</span>
+                    <div class="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200">
+                        <span class="text-slate-500">Latency:</span> <span id="latency-val" class="font-bold text-slate-700">0ms</span>
                     </div>
                 </div>
             </div>
@@ -126,330 +120,341 @@
     <!-- Main Workspace Container -->
     <main class="max-w-7xl w-full mx-auto px-4 py-6 flex-grow flex flex-col lg:flex-row gap-6">
         
-        <!-- Left Column: Video Feeds & Visualization (Heavy Viewport) -->
-        <div class="w-full lg:w-[60%] flex flex-col gap-4">
-            <div class="relative glass-panel rounded-2xl overflow-hidden flex flex-col items-center justify-center p-2 min-h-[300px] md:min-h-[480px]">
+        <!-- Left Column: Camera Feed & Video Viewport -->
+        <div class="w-full lg:w-[58%] flex flex-col gap-4">
+            <div class="relative clinic-panel rounded-2xl p-3 min-h-[300px] md:min-h-[480px] flex flex-col items-center justify-center">
                 
                 <!-- Loading & Setup Overlay -->
-                <div id="loading-overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center z-30 transition-all duration-500">
+                <div id="loading-overlay" class="absolute inset-0 bg-white/95 flex flex-col items-center justify-center z-30 transition-all duration-500 rounded-2xl">
                     <div class="relative flex items-center justify-center mb-6">
-                        <div class="absolute w-24 h-24 rounded-full border-4 border-dashed border-brand-500/20 spin-slow"></div>
-                        <div class="absolute w-20 h-20 rounded-full border-4 border-t-emerald-500 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                        <div class="h-12 w-12 rounded-xl bg-slate-900 border border-slate-700 flex items-center justify-center">
-                            <i class="fa-solid fa-wave-square text-brand-500 animate-pulse text-xl"></i>
+                        <div class="absolute w-24 h-24 rounded-full border-4 border-dashed border-teal-500/20 spin-slow"></div>
+                        <div class="absolute w-20 h-20 rounded-full border-4 border-t-teal-600 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                        <div class="h-12 w-12 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center">
+                            <i class="fa-solid fa-heart-pulse text-teal-600 animate-pulse text-xl"></i>
                         </div>
                     </div>
-                    <h3 class="text-lg font-bold text-white tracking-wide">Initializing AI Engine</h3>
-                    <p class="text-xs text-slate-400 mt-2 max-w-xs text-center px-4 leading-relaxed">
-                        Loading MediaPipe neural models. Please grant camera permission when prompted.
+                    <h3 class="text-lg font-bold text-slate-800 tracking-wide">Initializing Clinical AI Engine</h3>
+                    <p class="text-xs text-slate-500 mt-2 max-w-xs text-center px-4 leading-relaxed">
+                        Setting up real-time skeletal telemetry algorithms. Please allow camera permissions when prompted.
                     </p>
-                    <div class="w-48 bg-slate-800 h-1.5 rounded-full mt-4 overflow-hidden">
-                        <div id="load-progress" class="bg-gradient-to-r from-brand-500 to-emerald-500 h-full w-[10%] transition-all duration-300"></div>
+                    <div class="w-48 bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden border border-slate-200">
+                        <div id="load-progress" class="bg-gradient-to-r from-teal-500 to-teal-600 h-full w-[10%] transition-all duration-300"></div>
                     </div>
                 </div>
 
-                <!-- Local File / Protocol Security Warning Screen (Hidden by default) -->
-                <div id="protocol-warning" class="absolute inset-0 bg-slate-950/95 flex flex-col items-center justify-center z-40 hidden p-6 text-center overflow-y-auto">
-                    <div class="h-14 w-14 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-4 text-amber-400 text-2xl animate-bounce">
+                <!-- HTTPS/Webcam Troubleshooting Warning Overlay -->
+                <div id="protocol-warning" class="absolute inset-0 bg-white/98 flex flex-col items-center justify-center z-40 hidden p-6 text-center overflow-y-auto rounded-2xl">
+                    <div class="h-14 w-14 rounded-full bg-amber-500/10 border border-amber-400/30 flex items-center justify-center mb-4 text-amber-500 text-2xl animate-bounce">
                         <i class="fa-solid fa-triangle-exclamation"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-white tracking-wide">Local Protocol (file://) Detected</h3>
-                    <p class="text-xs text-slate-400 mt-2 max-w-md leading-relaxed">
-                        Modern web browsers block webcam access on local files for security. To run this app locally, you must host it on a local secure context (<code class="text-brand-accent bg-slate-900 px-1.5 py-0.5 rounded font-mono">localhost</code>).
+                    <h3 class="text-lg font-bold text-slate-800 tracking-wide">Secure Context Check Required</h3>
+                    <p class="text-xs text-slate-500 mt-2 max-w-md leading-relaxed">
+                        To run local camera analytics, web browsers require a secure connection (<code class="text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded font-mono font-semibold">https://</code>) or a direct <code class="text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded font-mono font-semibold">localhost</code> pipeline.
                     </p>
                     
-                    <div class="mt-5 w-full max-w-md text-left bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3.5">
-                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider block border-b border-slate-800 pb-1.5">How to Fix This (Choose One):</span>
+                    <div class="mt-5 w-full max-w-md text-left bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block border-b border-slate-200 pb-1.5">Actionable Deployment Fixes:</span>
                         
-                        <div class="space-y-3 text-xs">
+                        <div class="space-y-3.5 text-xs text-slate-600">
                             <div>
-                                <p class="text-slate-300 font-semibold"><span class="text-brand-500">Method 1:</span> Using VS Code (Easiest)</p>
-                                <p class="text-slate-400 mt-0.5">Open the file/folder in VS Code, install the <strong class="text-slate-200">Live Server</strong> extension, and click <strong class="text-slate-200">"Go Live"</strong> at the bottom right.</p>
+                                <p class="text-slate-800 font-bold flex items-center gap-1.5">
+                                    <span class="h-4 w-4 bg-teal-600 text-white text-[9px] rounded-full flex items-center justify-center font-bold">1</span> 
+                                    Vercel Production Deployments
+                                </p>
+                                <p class="mt-1">Vercel serves pages over <strong class="text-slate-800">HTTPS</strong> automatically. If the camera still fails, you may have declined permission. Reset permission by clicking the padlock <i class="fa-solid fa-lock text-slate-400"></i> in the browser address bar, then select <strong class="text-slate-800">"Allow Camera"</strong>.</p>
                             </div>
                             
                             <div>
-                                <p class="text-slate-300 font-semibold"><span class="text-brand-500">Method 2:</span> Python Command (If installed)</p>
-                                <p class="text-slate-400 mt-0.5">Open your terminal in this folder and run:</p>
-                                <code class="block bg-slate-950 p-2 rounded text-[11px] font-mono text-amber-300 mt-1 select-all border border-slate-800/60">python -m http.server 8000</code>
-                                <p class="text-slate-500 text-[10px] mt-1">Then visit <a href="http://localhost:8000" target="_blank" class="text-brand-accent hover:underline">http://localhost:8000</a> in your browser.</p>
-                            </div>
-
-                            <div>
-                                <p class="text-slate-300 font-semibold"><span class="text-brand-500">Method 3:</span> Node.js / NPM</p>
-                                <p class="text-slate-400 mt-0.5">Run this single terminal command inside your folder:</p>
-                                <code class="block bg-slate-950 p-2 rounded text-[11px] font-mono text-amber-300 mt-1 select-all border border-slate-800/60">npx serve</code>
+                                <p class="text-slate-800 font-bold flex items-center gap-1.5">
+                                    <span class="h-4 w-4 bg-teal-600 text-white text-[9px] rounded-full flex items-center justify-center font-bold">2</span> 
+                                    Running Locally (Notepad, VS Code, etc)
+                                </p>
+                                <p class="mt-1">Instead of opening the file directly (e.g., <code class="bg-slate-200 text-slate-800 px-1 rounded">file://C:/index.html</code>), host a temporary server. In terminal/cmd run:</p>
+                                <code class="block bg-slate-900 text-slate-200 p-2.5 rounded font-mono text-[11px] mt-1 select-all border border-slate-700">python -m http.server 8000</code>
+                                <p class="text-[10px] text-slate-500 mt-1">Then visit <a href="http://localhost:8000" target="_blank" class="text-teal-600 font-semibold underline hover:text-teal-700">http://localhost:8000</a>.</p>
                             </div>
                         </div>
                     </div>
+                    
+                    <button onclick="dismissProtocolWarning()" class="mt-6 text-xs text-slate-500 hover:text-slate-800 underline transition-colors">
+                        Ignore warning and try anyway
+                    </button>
                 </div>
 
-                <!-- Custom Alert Notification Box (Never using alert()) -->
+                <!-- Custom Alert Notification Box (Replacing default alert modals) -->
                 <div id="alert-banner" class="absolute top-4 left-4 right-4 z-40 hidden transform translate-y-[-10px] transition-all duration-300">
-                    <div class="bg-rose-950/95 border border-rose-500/30 text-rose-200 px-4 py-3 rounded-xl flex items-center justify-between shadow-lg">
+                    <div class="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl flex items-center justify-between shadow-md">
                         <div class="flex items-center gap-3">
-                            <i class="fa-solid fa-circle-exclamation text-rose-400 text-lg"></i>
+                            <i class="fa-solid fa-circle-exclamation text-rose-600 text-lg"></i>
                             <span id="alert-message" class="text-xs md:text-sm font-medium"></span>
                         </div>
-                        <button onclick="hideAlert()" class="text-rose-400 hover:text-rose-100 transition-colors">
+                        <button onclick="hideAlert()" class="text-rose-500 hover:text-rose-800 transition-colors">
                             <i class="fa-solid fa-xmark"></i>
                         </button>
                     </div>
                 </div>
 
-                <!-- Hidden Input Video Device -->
+                <!-- Hidden Native Video Device -->
                 <video id="input-video" class="hidden" playsinline muted autoplay></video>
                 
-                <!-- Interactive Canvas Rendering Pipeline -->
-                <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-800">
-                    <!-- Feed Placeholder text (visible when video isn't active) -->
-                    <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 p-4 text-center">
-                        <i class="fa-solid fa-video-slash text-4xl mb-3 text-slate-700"></i>
-                        <p class="text-sm font-semibold text-slate-400">Camera Feed Inactive</p>
-                        <p class="text-xs text-slate-600 mt-1">Configure sources and click "Activate Webcam" to launch</p>
+                <!-- Rendering Canvas Container -->
+                <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center border border-slate-200 shadow-inner">
+                    <!-- Feed Placeholder when inactive -->
+                    <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-4 text-center z-10">
+                        <div class="h-16 w-16 rounded-full bg-slate-800 flex items-center justify-center mb-3 text-slate-500 shadow-md">
+                            <i class="fa-solid fa-video-slash text-2xl"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-300">Live Posture Stream Off</p>
+                        <p class="text-xs text-slate-500 mt-1 max-w-xs">Press the "Activate Webcam" button below to initiate dynamic body tracking.</p>
                     </div>
 
-                    <!-- Rendering Canvas -->
-                    <canvas id="output-canvas" class="w-full h-full object-contain pointer-events-none z-10 opacity-0 transition-opacity duration-500"></canvas>
+                    <!-- Output processing canvas -->
+                    <canvas id="output-canvas" class="w-full h-full object-contain pointer-events-none z-20 opacity-0 transition-opacity duration-500"></canvas>
                 </div>
 
-                <!-- Canvas Sub-HUD Dashboard Overlay -->
-                <div class="w-full flex justify-between items-center px-2 pt-3 text-xs text-slate-400">
-                    <span id="camera-resolution" class="font-mono bg-slate-900 border border-slate-800 px-2 py-1 rounded">Res: -- x --</span>
-                    <span id="pose-confidence-meter" class="font-mono bg-slate-900 border border-slate-800 px-2 py-1 rounded flex items-center gap-1">
-                        <span class="w-2 h-2 rounded-full bg-slate-600 inline-block" id="confidence-indicator"></span> Confidence: <span id="confidence-val">0%</span>
+                <!-- Sub-HUD overlay metrics -->
+                <div class="w-full flex justify-between items-center px-2 pt-3 text-xs text-slate-500">
+                    <span id="camera-resolution" class="font-mono bg-slate-100 border border-slate-200 px-2 py-1 rounded">Res: -- x --</span>
+                    <span id="pose-confidence-meter" class="font-mono bg-slate-100 border border-slate-200 px-2 py-1 rounded flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block animate-pulse" id="confidence-indicator"></span> 
+                        Confidence: <span id="confidence-val" class="font-bold text-slate-700">0%</span>
                     </span>
                 </div>
             </div>
 
-            <!-- Frame / Captured Gallery Panel -->
-            <div class="glass-panel rounded-2xl p-4 flex flex-col gap-3">
-                <div class="flex justify-between items-center">
+            <!-- Dynamic Session Captures -->
+            <div class="clinic-panel rounded-2xl p-4 flex flex-col gap-3">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-images text-brand-500"></i>
-                        <h4 class="text-sm font-semibold">Snapshot Gallery</h4>
+                        <i class="fa-solid fa-clipboard-user text-teal-600"></i>
+                        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Calibration Snapshots</h4>
                     </div>
-                    <span class="text-[10px] text-slate-500 font-mono" id="gallery-count">0 images captured</span>
+                    <span class="text-[10px] text-slate-400 font-mono" id="gallery-count">0 frames captured</span>
                 </div>
-                <div id="snapshot-gallery" class="flex gap-3 overflow-x-auto pb-2 min-h-[80px] scrollbar">
-                    <!-- Static helper text when empty -->
-                    <div id="gallery-empty" class="text-xs text-slate-600 flex items-center justify-center w-full py-2">
-                        No snapshots taken yet. Press "Capture Frame" to save a session visual.
+                <div id="snapshot-gallery" class="flex gap-3 overflow-x-auto pb-1 min-h-[85px] scrollbar">
+                    <div id="gallery-empty" class="text-xs text-slate-400 flex items-center justify-center w-full py-2 italic">
+                        Captured biomechanical snapshots will appear here during live tracking.
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Right Column: Interactive Controls & Biometrics Panel -->
-        <div class="w-full lg:w-[40%] flex flex-col gap-4">
+        <!-- Right Column: System Controls & Posture Calibration Diagnostics -->
+        <div class="w-full lg:w-[42%] flex flex-col gap-4">
             
             <!-- System Controls -->
-            <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4">
-                <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-4">
+                <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-sliders text-brand-accent"></i>
-                        <h3 class="text-base font-bold text-white">Device & Engine Controls</h3>
+                        <i class="fa-solid fa-stethoscope text-teal-600"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Analysis Setup</h3>
                     </div>
-                    <i class="fa-solid fa-microchip text-slate-500 text-sm"></i>
+                    <span class="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200 font-mono font-bold">Step2Track V1.4</span>
                 </div>
 
-                <!-- Capture Source Selector -->
+                <!-- Webcam Device Selector and Complexity Controls -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div class="flex flex-col gap-1.5">
-                        <label class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                            <i class="fa-solid fa-camera"></i> Input Source
+                        <label class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-sliders text-teal-600"></i> Video Input
                         </label>
-                        <select id="camera-select" class="bg-slate-900/90 border border-slate-800 text-xs text-slate-200 rounded-lg p-2.5 outline-none focus:border-brand-500 transition-colors">
+                        <select id="camera-select" class="bg-white border border-slate-200 text-xs text-slate-700 rounded-lg p-2.5 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors shadow-sm">
                             <option value="default">Default Device</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1.5">
-                        <label class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                            <i class="fa-solid fa-gauge"></i> Model Complexity
+                        <label class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-brain text-teal-600"></i> Neural Accuracy
                         </label>
-                        <select id="model-complexity" class="bg-slate-900/90 border border-slate-800 text-xs text-slate-200 rounded-lg p-2.5 outline-none focus:border-brand-500 transition-colors">
-                            <option value="0">Lite (Faster, less accurate)</option>
-                            <option value="1" selected>Full (Balanced)</option>
-                            <option value="2">Heavy (Most accurate)</option>
+                        <select id="model-complexity" class="bg-white border border-slate-200 text-xs text-slate-700 rounded-lg p-2.5 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors shadow-sm">
+                            <option value="0">Basic Mode (Faster, light)</option>
+                            <option value="1" selected>Optimal Mode (Balanced)</option>
+                            <option value="2">Precision Mode (Heavy, clinic)</option>
                         </select>
                     </div>
                 </div>
 
-                <!-- Primary Action Buttons -->
+                <!-- Primary Control Buttons -->
                 <div class="grid grid-cols-2 gap-3 mt-1">
-                    <button id="btn-camera-toggle" class="col-span-1 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
-                        <i class="fa-solid fa-power-off"></i>
+                    <button id="btn-camera-toggle" class="col-span-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md active:scale-[0.98]">
+                        <i class="fa-solid fa-circle-play"></i>
                         <span id="btn-camera-text">Activate Webcam</span>
                     </button>
-                    <button id="btn-capture" class="col-span-1 bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
-                        <i class="fa-solid fa-camera-retro"></i>
+                    <button id="btn-capture" class="col-span-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
+                        <i class="fa-solid fa-camera"></i>
                         Capture Frame
                     </button>
                 </div>
             </div>
 
-            <!-- Visualization Toggles -->
-            <div class="glass-panel rounded-2xl p-5 flex flex-col gap-3">
-                <h4 class="text-xs font-bold text-slate-400 tracking-wider uppercase border-b border-slate-800 pb-2">Visualization Parameters</h4>
+            <!-- Calibration Adjusters -->
+            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-3">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <h4 class="text-xs font-bold text-slate-600 tracking-wider uppercase">Visualizations</h4>
+                    <button id="btn-calibrate" class="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 px-2 py-1 rounded font-bold transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-arrows-spin"></i> Reset Calibration
+                    </button>
+                </div>
                 
                 <div class="grid grid-cols-2 gap-3 mt-1">
-                    <!-- Toggle Face elements -->
-                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors">
-                        <span class="text-xs font-medium text-slate-300 flex items-center gap-2">
+                    <!-- Toggle Face -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
                             <i class="fa-solid fa-face-smile text-amber-500"></i> Face Overlay
                         </span>
-                        <input type="checkbox" id="toggle-face" checked class="rounded border-slate-800 text-brand-500 focus:ring-brand-500 bg-slate-900 h-4 w-4">
+                        <input type="checkbox" id="toggle-face" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
                     </label>
 
                     <!-- Toggle Bones -->
-                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors">
-                        <span class="text-xs font-medium text-slate-300 flex items-center gap-2">
-                            <i class="fa-solid fa-grip-lines text-brand-500"></i> Draw Bones
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-vector-square text-teal-600"></i> Bone Skeletal
                         </span>
-                        <input type="checkbox" id="toggle-bones" checked class="rounded border-slate-800 text-brand-500 focus:ring-brand-500 bg-slate-900 h-4 w-4">
+                        <input type="checkbox" id="toggle-bones" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
                     </label>
 
                     <!-- Toggle Hand Points -->
-                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors">
-                        <span class="text-xs font-medium text-slate-300 flex items-center gap-2">
-                            <i class="fa-solid fa-hand-holding-hand text-brand-accent"></i> Show Hands
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-hand text-teal-500"></i> Hands Overlay
                         </span>
-                        <input type="checkbox" id="toggle-hands" checked class="rounded border-slate-800 text-brand-500 focus:ring-brand-500 bg-slate-900 h-4 w-4">
+                        <input type="checkbox" id="toggle-hands" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
                     </label>
 
-                    <!-- Toggle Neon Glow -->
-                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 cursor-pointer hover:bg-slate-900 transition-colors">
-                        <span class="text-xs font-medium text-slate-300 flex items-center gap-2">
-                            <i class="fa-solid fa-sun text-indigo-400"></i> Neon Glow
+                    <!-- Toggle Highlight Glow -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-half-stroke text-slate-600"></i> Render Glow
                         </span>
-                        <input type="checkbox" id="toggle-glow" checked class="rounded border-slate-800 text-brand-500 focus:ring-brand-500 bg-slate-900 h-4 w-4">
+                        <input type="checkbox" id="toggle-glow" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
                     </label>
                 </div>
 
-                <!-- Color picker and thickness slider -->
+                <!-- Interactive Skeletal Color Themes -->
                 <div class="mt-2 space-y-3">
                     <div class="flex items-center justify-between gap-4">
-                        <span class="text-xs font-semibold text-slate-400 flex items-center gap-1.5">
-                            <i class="fa-solid fa-palette"></i> Skeleton Theme
+                        <span class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-palette text-teal-600"></i> Aesthetic Accent
                         </span>
                         <div class="flex items-center gap-2">
-                            <button class="theme-dot w-6 h-6 rounded-full bg-indigo-500 ring-2 ring-white ring-offset-2 ring-offset-slate-950" data-color="#6366f1"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-teal-500 ring-2 ring-white ring-offset-2 ring-offset-slate-100" data-color="#0d9488"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-indigo-500" data-color="#4f46e5"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-sky-500" data-color="#0ea5e9"></button>
                             <button class="theme-dot w-6 h-6 rounded-full bg-emerald-500" data-color="#10b981"></button>
-                            <button class="theme-dot w-6 h-6 rounded-full bg-rose-500" data-color="#f43f5e"></button>
-                            <button class="theme-dot w-6 h-6 rounded-full bg-amber-500" data-color="#f59e0b"></button>
-                            <button class="theme-dot w-6 h-6 rounded-full bg-sky-400" data-color="#38bdf8"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-amber-500" data-color="#d97706"></button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Real-time Bio-metrics & Analysis -->
-            <div class="glass-panel rounded-2xl p-5 flex flex-col gap-4 flex-grow">
-                <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+            <!-- Real-time Clinical Bio-metrics & Posture Diagnosis -->
+            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-4 flex-grow">
+                <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-square-poll-vertical text-brand-accent"></i>
-                        <h3 class="text-base font-bold text-white">Posture & Angle Analytics</h3>
+                        <i class="fa-solid fa-chart-line text-teal-600"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Clinical Biometrics</h3>
                     </div>
-                    <span id="posture-state-badge" class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-slate-800 text-slate-400">
-                        Analyzing...
+                    <span id="posture-state-badge" class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-slate-100 text-slate-500">
+                        Awaiting feed...
                     </span>
                 </div>
 
-                <!-- Posture Score & Main Alert -->
+                <!-- Posture Score & Alignment Metrics -->
                 <div class="grid grid-cols-2 gap-4">
                     <!-- Posture Card -->
-                    <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex flex-col items-center justify-center text-center">
-                        <div class="relative w-16 h-16 flex items-center justify-center mb-1">
-                            <!-- Circular Progress Bar -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col items-center justify-center text-center">
+                        <div class="relative w-16 h-16 flex items-center justify-center mb-1.5">
+                            <!-- Circular Progress Indicator -->
                             <svg class="w-full h-full transform -rotate-90">
-                                <circle cx="32" cy="32" r="28" stroke="#1e293b" stroke-width="5" fill="transparent" />
-                                <circle id="posture-score-circle" cx="32" cy="32" r="28" stroke="#10b981" stroke-width="5" fill="transparent" stroke-dasharray="175.9" stroke-dashoffset="175.9" class="transition-all duration-300" />
+                                <circle cx="32" cy="32" r="28" stroke="#e2e8f0" stroke-width="5" fill="transparent" />
+                                <circle id="posture-score-circle" cx="32" cy="32" r="28" stroke="#0d9488" stroke-width="5" fill="transparent" stroke-dasharray="175.9" stroke-dashoffset="175.9" class="transition-all duration-300" />
                             </svg>
-                            <span id="posture-score-text" class="absolute font-extrabold text-sm text-white">0%</span>
+                            <span id="posture-score-text" class="absolute font-extrabold text-sm text-slate-800">0%</span>
                         </div>
-                        <span class="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">Posture Quality</span>
+                        <span class="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Posture Quality</span>
                     </div>
 
-                    <!-- Alignment Monitor -->
-                    <div class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+                    <!-- Live Alignment Monitor -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
                         <div class="space-y-2">
-                            <div class="flex justify-between text-[11px]">
-                                <span class="text-slate-400">Shoulders:</span>
-                                <span id="alignment-shoulders" class="font-mono text-slate-300 font-bold">Uncalibrated</span>
+                            <div class="flex justify-between text-[11px] border-b border-slate-100 pb-1">
+                                <span class="text-slate-500">Shoulders:</span>
+                                <span id="alignment-shoulders" class="font-mono text-slate-600 font-bold">Uncalibrated</span>
+                            </div>
+                            <div class="flex justify-between text-[11px] border-b border-slate-100 pb-1">
+                                <span class="text-slate-500">Pelvic/Hips:</span>
+                                <span id="alignment-hips" class="font-mono text-slate-600 font-bold">Uncalibrated</span>
                             </div>
                             <div class="flex justify-between text-[11px]">
-                                <span class="text-slate-400">Hips:</span>
-                                <span id="alignment-hips" class="font-mono text-slate-300 font-bold">Uncalibrated</span>
-                            </div>
-                            <div class="flex justify-between text-[11px]">
-                                <span class="text-slate-400">Leaning:</span>
-                                <span id="alignment-leaning" class="font-mono text-slate-300 font-bold">Uncalibrated</span>
+                                <span class="text-slate-500">Head Tilt:</span>
+                                <span id="alignment-leaning" class="font-mono text-slate-600 font-bold">Uncalibrated</span>
                             </div>
                         </div>
-                        <p id="posture-tips" class="text-[10px] text-slate-500 italic text-center mt-1">Stand straight to initialize track.</p>
+                        <p id="posture-tips" class="text-[10px] text-teal-700 italic text-center mt-1.5 font-medium">Position full skeleton in view.</p>
                     </div>
                 </div>
 
                 <!-- Live Joint Angles Area -->
                 <div class="space-y-3">
-                    <h5 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Dynamic Joint Flex Angles</h5>
+                    <h5 class="text-xs font-bold text-slate-600 uppercase tracking-wider">Dynamic Joint Biomechanics</h5>
                     
                     <div class="grid grid-cols-2 gap-3">
-                        <!-- Elbow Angle (Left vs Right) -->
-                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <!-- Elbow Flex -->
+                        <div class="bg-white p-3 rounded-xl border border-slate-200">
                             <div class="flex justify-between items-center text-xs mb-2">
-                                <span class="font-semibold text-slate-300 flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span> Elbow Flex
+                                <span class="font-bold text-slate-700 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span> Elbow Extension
                                 </span>
-                                <i class="fa-solid fa-angles-right text-[10px] text-slate-600"></i>
+                                <i class="fa-solid fa-angles-right text-[10px] text-slate-400"></i>
                             </div>
                             <div class="space-y-1.5">
-                                <div class="flex justify-between text-[10px] font-mono text-slate-400">
-                                    <span>L: <span id="angle-elbow-l" class="text-slate-200">0°</span></span>
-                                    <span>R: <span id="angle-elbow-r" class="text-slate-200">0°</span></span>
+                                <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                                    <span>L: <span id="angle-elbow-l" class="text-slate-800 font-bold">0°</span></span>
+                                    <span>R: <span id="angle-elbow-r" class="text-slate-800 font-bold">0°</span></span>
                                 </div>
-                                <div class="h-1 bg-slate-800 rounded-full overflow-hidden flex">
-                                    <div id="bar-elbow-l" class="bg-brand-500 h-full w-[0%] transition-all duration-100"></div>
-                                    <div id="bar-elbow-r" class="bg-cyan-500 h-full w-[0%] transition-all duration-100 border-l border-slate-900"></div>
+                                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                                    <div id="bar-elbow-l" class="bg-teal-500 h-full w-[0%] transition-all duration-100"></div>
+                                    <div id="bar-elbow-r" class="bg-teal-300 h-full w-[0%] transition-all duration-100 border-l border-white"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Knee Angle -->
-                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80">
+                        <!-- Knee Flex -->
+                        <div class="bg-white p-3 rounded-xl border border-slate-200">
                             <div class="flex justify-between items-center text-xs mb-2">
-                                <span class="font-semibold text-slate-300 flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-brand-accent"></span> Knee Flex
+                                <span class="font-bold text-slate-700 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-teal-600"></span> Knee Flexion
                                 </span>
-                                <i class="fa-solid fa-angles-right text-[10px] text-slate-600"></i>
+                                <i class="fa-solid fa-angles-right text-[10px] text-slate-400"></i>
                             </div>
                             <div class="space-y-1.5">
-                                <div class="flex justify-between text-[10px] font-mono text-slate-400">
-                                    <span>L: <span id="angle-knee-l" class="text-slate-200">0°</span></span>
-                                    <span>R: <span id="angle-knee-r" class="text-slate-200">0°</span></span>
+                                <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                                    <span>L: <span id="angle-knee-l" class="text-slate-800 font-bold">0°</span></span>
+                                    <span>R: <span id="angle-knee-r" class="text-slate-800 font-bold">0°</span></span>
                                 </div>
-                                <div class="h-1 bg-slate-800 rounded-full overflow-hidden flex">
-                                    <div id="bar-knee-l" class="bg-brand-accent h-full w-[0%] transition-all duration-100"></div>
-                                    <div id="bar-knee-r" class="bg-emerald-300 h-full w-[0%] transition-all duration-100 border-l border-slate-900"></div>
+                                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                                    <div id="bar-knee-l" class="bg-teal-600 h-full w-[0%] transition-all duration-100"></div>
+                                    <div id="bar-knee-r" class="bg-teal-400 h-full w-[0%] transition-all duration-100 border-l border-white"></div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Hip Angle -->
-                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 col-span-2">
+                        <!-- Trunk Hip Flex -->
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 col-span-2">
                             <div class="flex justify-between items-center text-xs mb-2">
-                                <span class="font-semibold text-slate-300 flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Trunk/Hip Flex
+                                <span class="font-bold text-slate-700 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-700"></span> Trunk & Spinal Hips
                                 </span>
-                                <i class="fa-solid fa-angles-right text-[10px] text-slate-600"></i>
+                                <i class="fa-solid fa-angles-right text-[10px] text-slate-400"></i>
                             </div>
                             <div class="space-y-1.5">
-                                <div class="flex justify-between text-[10px] font-mono text-slate-400">
-                                    <span>Left Hip: <span id="angle-hip-l" class="text-slate-200">0°</span></span>
-                                    <span>Right Hip: <span id="angle-hip-r" class="text-slate-200">0°</span></span>
+                                <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                                    <span>Left Hip: <span id="angle-hip-l" class="text-slate-800 font-bold">0°</span></span>
+                                    <span>Right Hip: <span id="angle-hip-r" class="text-slate-800 font-bold">0°</span></span>
                                 </div>
-                                <div class="h-1 bg-slate-800 rounded-full overflow-hidden flex">
-                                    <div id="bar-hip-l" class="bg-amber-500 h-full w-[0%] transition-all duration-100"></div>
-                                    <div id="bar-hip-r" class="bg-yellow-300 h-full w-[0%] transition-all duration-100 border-l border-slate-900"></div>
+                                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                                    <div id="bar-hip-l" class="bg-slate-700 h-full w-[0%] transition-all duration-100"></div>
+                                    <div id="bar-hip-r" class="bg-slate-400 h-full w-[0%] transition-all duration-100 border-l border-white"></div>
                                 </div>
                             </div>
                         </div>
@@ -461,13 +466,13 @@
     </main>
 
     <!-- Footer -->
-    <footer class="glass-panel border-t border-slate-800 text-center py-4 px-4 text-xs text-slate-500 mt-6">
+    <footer class="bg-white border-t border-slate-200 text-center py-4 px-4 text-xs text-slate-500 mt-6 shadow-inner">
         <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-            <p>Engine powered by MediaPipe Pose Model & WebGL Acceleration.</p>
+            <p>© 2026 Step2track AI. Powered by localized WebGL computer vision networks.</p>
             <div class="flex gap-4">
-                <span class="hover:text-slate-300 cursor-help transition-colors" title="Front-facing model calibrated for full-body tracking at 2-5m.">Calibrated for: Full-Body (2-5m)</span>
+                <span class="hover:text-teal-600 cursor-help transition-colors" title="Clinical standards for orthopedic posture evaluation.">Clinical Standard Model</span>
                 <span>•</span>
-                <span class="hover:text-slate-300 cursor-help transition-colors" title="All processing happens locally on your computer. Camera data never leaves your device.">Privacy: Local-Only AI</span>
+                <span class="hover:text-teal-600 cursor-help transition-colors" title="Your images are processed purely inside your private browser session. No data is stored or transmitted externally.">Local Privacy Sandbox Safeguard</span>
             </div>
         </div>
     </footer>
@@ -475,7 +480,7 @@
     <script>
         // Set state properties
         const state = {
-            activeColor: '#6366f1',
+            activeColor: '#0d9488', // Medical Teal
             videoActive: false,
             modelLoaded: false,
             lastFrameTime: 0,
@@ -487,6 +492,12 @@
                 bones: true,
                 hands: true,
                 glow: true
+            },
+            calibration: {
+                calibrated: false,
+                neutralShoulderDiff: 0.0,
+                neutralHipDiff: 0.0,
+                neutralHeadDiff: 0.0
             },
             animationFrameId: null // Stores active rendering loop instance
         };
@@ -500,6 +511,7 @@
         const btnCameraToggle = document.getElementById('btn-camera-toggle');
         const btnCameraText = document.getElementById('btn-camera-text');
         const btnCapture = document.getElementById('btn-capture');
+        const btnCalibrate = document.getElementById('btn-calibrate');
         const loadingOverlay = document.getElementById('loading-overlay');
         const loadProgress = document.getElementById('load-progress');
         const alertBanner = document.getElementById('alert-banner');
@@ -570,11 +582,16 @@
             }, 300);
         }
 
+        // Dismiss local protocol troubleshooting card
+        function dismissProtocolWarning() {
+            document.getElementById('protocol-warning').classList.add('hidden');
+        }
+
         // Initialize theme selector
         document.querySelectorAll('.theme-dot').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-slate-950'));
-                e.target.classList.add('ring-2', 'ring-white', 'ring-offset-2', 'ring-offset-slate-950');
+                document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('ring-2', 'ring-teal-500', 'ring-offset-2', 'ring-offset-slate-100'));
+                e.target.classList.add('ring-2', 'ring-teal-500', 'ring-offset-2', 'ring-offset-slate-100');
                 state.activeColor = e.target.getAttribute('data-color');
             });
         });
@@ -589,9 +606,10 @@
 
         [toggleFace, toggleBones, toggleHands, toggleGlow].forEach(el => el.addEventListener('change', updateOptions));
 
-        // Get video input list (Enumerate Devices only succeeds *after* permissions are allowed)
+        // Get video input list (Enumerate Devices only succeeds after user allows camera permissions once)
         async function getDevices() {
             try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
                 
@@ -600,7 +618,7 @@
                 // Add default device placeholder
                 const optDefault = document.createElement('option');
                 optDefault.value = "default";
-                optDefault.text = "Default System Webcam";
+                optDefault.text = "Primary Native Camera";
                 cameraSelect.appendChild(optDefault);
 
                 if (videoDevices.length === 0) {
@@ -614,7 +632,7 @@
                     cameraSelect.appendChild(option);
                 });
             } catch (err) {
-                console.warn("Could not list webcam devices: " + err.message);
+                console.warn("Could not list video inputs: " + err.message);
             }
         }
 
@@ -645,22 +663,22 @@
             const offset = circ - (score / 100) * circ;
             postureScoreCircle.style.strokeDashoffset = offset;
 
-            if (score >= 80) {
-                postureScoreCircle.setAttribute('stroke', '#10b981'); // Emerald
-                postureStateBadge.textContent = "Excellent";
-                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-emerald-950 text-emerald-400";
-            } else if (score >= 60) {
-                postureScoreCircle.setAttribute('stroke', '#eab308'); // Yellow
-                postureStateBadge.textContent = "Moderate";
-                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-yellow-950 text-yellow-400";
+            if (score >= 90) {
+                postureScoreCircle.setAttribute('stroke', '#0d9488'); // Dark Teal
+                postureStateBadge.textContent = "Optimal";
+                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-teal-50 text-teal-700 border border-teal-200";
+            } else if (score >= 70) {
+                postureScoreCircle.setAttribute('stroke', '#f97316'); // Orange
+                postureStateBadge.textContent = "Leaning";
+                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-orange-50 text-orange-700 border border-orange-200";
             } else {
-                postureScoreCircle.setAttribute('stroke', '#f43f5e'); // Rose
-                postureStateBadge.textContent = "Poor / Slouching";
-                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-rose-950 text-rose-400";
+                postureScoreCircle.setAttribute('stroke', '#ef4444'); // Red
+                postureStateBadge.textContent = "Needs Correction";
+                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-red-50 text-red-700 border border-red-200";
             }
         }
 
-        // Custom draw connectors with glowing properties
+        // Custom draw connectors with glowing properties (custom colors for clean light look)
         function drawSegment(ctx, p1, p2, color, thickness, hasGlow) {
             if (!p1 || !p2 || p1.visibility < 0.5 || p2.visibility < 0.5) return;
             
@@ -670,7 +688,7 @@
 
             if (hasGlow) {
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 10;
+                ctx.shadowBlur = 12;
             } else {
                 ctx.shadowBlur = 0;
             }
@@ -691,20 +709,20 @@
             
             if (hasGlow) {
                 ctx.shadowColor = color;
-                ctx.shadowBlur = 12;
+                ctx.shadowBlur = 14;
             }
             ctx.fill();
             ctx.shadowBlur = 0; // Reset
             
-            // Outer white concentric circle for tech aesthetics
+            // Outer concentric white circle for refined technology aesthetic
             ctx.beginPath();
             ctx.arc(point.x * canvasElement.width, point.y * canvasElement.height, size + 2, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 1.5;
             ctx.stroke();
         }
 
-        // Main Rendering Frame Callback
+        // Main Frame Callback for rendering skeletal lines over raw video
         function onPoseResults(results) {
             const now = performance.now();
             const frameLatency = Math.round(now - state.lastFrameTime);
@@ -727,7 +745,7 @@
                 fpsStartTime = now;
             }
 
-            // Canvas clear and mirror
+            // Draw to dynamic canvas with proper flipping for natural mirror view
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             
@@ -745,23 +763,23 @@
                 const enableGlow = state.options.glow;
                 
                 const themeColor = state.activeColor;
-                const accentColor = "#10b981"; 
+                const secondaryAccentColor = "#14b8a6"; // Teal accent
                 
-                // Confidence estimation
+                // Track quality factor
                 let totalVis = 0;
                 landmarks.forEach(lm => totalVis += lm.visibility);
                 const meanConfidence = Math.round((totalVis / landmarks.length) * 100);
                 confidenceVal.textContent = `${meanConfidence}%`;
                 
                 if (meanConfidence > 75) {
-                    confidenceIndicator.className = "w-2 h-2 rounded-full bg-emerald-500 inline-block";
+                    confidenceIndicator.className = "w-2.5 h-2.5 rounded-full bg-teal-500 inline-block";
                 } else if (meanConfidence > 50) {
-                    confidenceIndicator.className = "w-2 h-2 rounded-full bg-yellow-500 inline-block";
+                    confidenceIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 inline-block";
                 } else {
-                    confidenceIndicator.className = "w-2 h-2 rounded-full bg-rose-500 inline-block";
+                    confidenceIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500 inline-block animate-ping";
                 }
 
-                // Pose and Posture computations
+                // Execute clinical alignment calculations
                 processPostureMetrics(landmarks);
 
                 const mirroredLandmarks = landmarks.map(lm => ({
@@ -771,7 +789,7 @@
                     visibility: lm.visibility
                 }));
 
-                // Connect Joint Bones
+                // Build joint skeletal structures
                 if (drawBones) {
                     if (drawFace) {
                         const nose = mirroredLandmarks[0];
@@ -782,43 +800,44 @@
 
                         drawSegment(canvasCtx, nose, leftEye, '#94a3b8', 2, false);
                         drawSegment(canvasCtx, nose, rightEye, '#94a3b8', 2, false);
-                        drawSegment(canvasCtx, leftEye, leftEar, '#94a3b8', 1.5, false);
-                        drawSegment(canvasCtx, rightEye, rightEar, '#94a3b8', 1.5, false);
+                        drawSegment(canvasCtx, leftEye, leftEar, '#cbd5e1', 1.5, false);
+                        drawSegment(canvasCtx, rightEye, rightEar, '#cbd5e1', 1.5, false);
                     }
 
-                    // Upper Torso & Shoulders
+                    // Upper Torso & Spine Structure
                     drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[12], themeColor, 4, enableGlow); 
                     drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[23], themeColor, 3.5, enableGlow); 
                     drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[24], themeColor, 3.5, enableGlow); 
                     drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[24], themeColor, 4, enableGlow); 
 
-                    // Arms
+                    // Upper extremities (Arms)
                     drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[13], themeColor, 3, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[13], mirroredLandmarks[15], themeColor, 3, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[14], themeColor, 3, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[14], mirroredLandmarks[16], themeColor, 3, enableGlow);
 
-                    // Legs
+                    // Lower extremities (Knees, Ankle, feet alignments)
                     drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[25], themeColor, 3.5, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[25], mirroredLandmarks[27], themeColor, 3.5, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[29], themeColor, 2, false); 
-                    drawSegment(canvasCtx, mirroredLandmarks[29], mirroredLandmarks[31], themeColor, 2.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[29], mirroredLandmarks[31], themeColor, 2, false);
                     drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[31], themeColor, 2, false);
 
                     drawSegment(canvasCtx, mirroredLandmarks[24], mirroredLandmarks[26], themeColor, 3.5, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[26], mirroredLandmarks[28], themeColor, 3.5, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[30], themeColor, 2, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[30], mirroredLandmarks[32], themeColor, 2.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[30], mirroredLandmarks[32], themeColor, 2, false);
                     drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[32], themeColor, 2, false);
                 }
 
-                // Draw Dots
+                // Render clinical visual nodes
                 if (drawFace) {
                     [0, 2, 5, 7, 8].forEach(idx => {
-                        drawJointDot(canvasCtx, mirroredLandmarks[idx], '#f59e0b', 4, false);
+                        drawJointDot(canvasCtx, mirroredLandmarks[idx], '#f59e0b', 4.5, false);
                     });
                 }
 
+                // Core major orthopedic joints
                 [11, 12, 13, 14, 23, 24, 25, 26, 27, 28].forEach(idx => {
                     drawJointDot(canvasCtx, mirroredLandmarks[idx], themeColor, 6, enableGlow);
                 });
@@ -827,21 +846,21 @@
                     const leftHandGroup = [15, 17, 19, 21];
                     const rightHandGroup = [16, 18, 20, 22];
 
-                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[17], accentColor, 1.5, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[19], accentColor, 1.5, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[21], accentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[17], secondaryAccentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[19], secondaryAccentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[21], secondaryAccentColor, 1.5, false);
 
-                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[18], accentColor, 1.5, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[20], accentColor, 1.5, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[22], accentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[18], secondaryAccentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[20], secondaryAccentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[22], secondaryAccentColor, 1.5, false);
 
-                    leftHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], accentColor, 4, false));
-                    rightHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], accentColor, 4, false));
+                    leftHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], secondaryAccentColor, 4, false));
+                    rightHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], secondaryAccentColor, 4, false));
                 }
             }
         }
 
-        // Processing & Extracting Posture/Joint Analytics
+        // Processing & Extracting Posture/Joint Analytics with Calibration Offsets
         function processPostureMetrics(landmarks) {
             const lShoulder = landmarks[11];
             const rShoulder = landmarks[12];
@@ -857,7 +876,7 @@
             const rAnkle = landmarks[28];
             const nose = landmarks[0];
 
-            // 1. Compute Angles
+            // 1. Compute Angles (using absolute trigonometry coordinate segments)
             const flexElbowL = calculateAngle(lShoulder, lElbow, lWrist);
             const flexElbowR = calculateAngle(rShoulder, rElbow, rWrist);
             const flexKneeL = calculateAngle(lHip, lKnee, lAnkle);
@@ -865,7 +884,7 @@
             const flexHipL = calculateAngle(lShoulder, lHip, lKnee);
             const flexHipR = calculateAngle(rShoulder, rHip, rKnee);
 
-            // Update display angles
+            // Update display values
             angleElbowL.textContent = `${flexElbowL}°`;
             angleElbowR.textContent = `${flexElbowR}°`;
             barElbowL.style.width = `${Math.min(100, (flexElbowL / 180) * 100)}%`;
@@ -881,72 +900,103 @@
             barHipL.style.width = `${Math.min(100, (flexHipL / 180) * 100)}%`;
             barHipR.style.width = `${Math.min(100, (flexHipR / 180) * 100)}%`;
 
-            // 2. Compute Alignments
+            // 2. Compute Alignments with Calibration Offsets
             let postureScore = 100;
             let feedbackTips = [];
 
+            // Calibration button triggers neutral reference calculation
+            if (window.pendingCalibration && lShoulder.visibility > 0.7 && rShoulder.visibility > 0.7 && lHip.visibility > 0.7) {
+                state.calibration.neutralShoulderDiff = lShoulder.y - rShoulder.y;
+                state.calibration.neutralHipDiff = lHip.y - rHip.y;
+                if (nose.visibility > 0.7) {
+                    const center = (lShoulder.x + rShoulder.x) / 2;
+                    state.calibration.neutralHeadDiff = nose.x - center;
+                }
+                state.calibration.calibrated = true;
+                window.pendingCalibration = false;
+                showAlert("Step2track calibration complete! Your current pose has been set as your healthy baseline.");
+            }
+
+            // Shoulder calculation
             if (lShoulder.visibility > 0.6 && rShoulder.visibility > 0.6) {
-                const shoulderDelta = Math.abs(lShoulder.y - rShoulder.y);
-                if (shoulderDelta > 0.04) {
-                    const pctDiff = Math.min(30, Math.round(shoulderDelta * 300));
-                    postureScore -= pctDiff;
+                let shoulderDelta = (lShoulder.y - rShoulder.y);
+                if (state.calibration.calibrated) {
+                    shoulderDelta -= state.calibration.neutralShoulderDiff;
+                }
+                const absoluteDiff = Math.abs(shoulderDelta);
+                
+                if (absoluteDiff > 0.03) {
+                    const penalty = Math.min(30, Math.round(absoluteDiff * 350));
+                    postureScore -= penalty;
                     alignShoulders.textContent = "Uneven";
-                    alignShoulders.className = "font-mono text-rose-400 font-bold";
-                    feedbackTips.push("Level your shoulders.");
+                    alignShoulders.className = "font-mono text-rose-600 font-bold";
+                    feedbackTips.push("Balance shoulders.");
                 } else {
                     alignShoulders.textContent = "Aligned";
-                    alignShoulders.className = "font-mono text-emerald-400 font-bold";
+                    alignShoulders.className = "font-mono text-teal-600 font-bold";
                 }
             } else {
                 alignShoulders.textContent = "Detecting...";
-                alignShoulders.className = "font-mono text-slate-500 font-bold";
+                alignShoulders.className = "font-mono text-slate-400 font-bold";
             }
 
+            // Hip level calculation
             if (lHip.visibility > 0.6 && rHip.visibility > 0.6) {
-                const hipDelta = Math.abs(lHip.y - rHip.y);
-                if (hipDelta > 0.04) {
-                    const pctDiff = Math.min(25, Math.round(hipDelta * 250));
-                    postureScore -= pctDiff;
+                let hipDelta = (lHip.y - rHip.y);
+                if (state.calibration.calibrated) {
+                    hipDelta -= state.calibration.neutralHipDiff;
+                }
+                const absoluteDiff = Math.abs(hipDelta);
+
+                if (absoluteDiff > 0.035) {
+                    const penalty = Math.min(25, Math.round(absoluteDiff * 300));
+                    postureScore -= penalty;
                     alignHips.textContent = "Tilted";
-                    alignHips.className = "font-mono text-rose-400 font-bold";
-                    feedbackTips.push("Balance weight evenly.");
+                    alignHips.className = "font-mono text-rose-600 font-bold";
+                    feedbackTips.push("Distribute weight.");
                 } else {
-                    alignHips.textContent = "Aligned";
-                    alignHips.className = "font-mono text-emerald-400 font-bold";
+                    alignHips.textContent = "Balanced";
+                    alignHips.className = "font-mono text-teal-600 font-bold";
                 }
             } else {
                 alignHips.textContent = "Detecting...";
-                alignHips.className = "font-mono text-slate-500 font-bold";
+                alignHips.className = "font-mono text-slate-400 font-bold";
             }
 
+            // Head lean alignment
             if (nose.visibility > 0.6 && lShoulder.visibility > 0.6 && rShoulder.visibility > 0.6) {
-                const shoulderCenterX = (lShoulder.x + rShoulder.x) / 2;
-                const headLeaningX = Math.abs(nose.x - shoulderCenterX);
+                const center = (lShoulder.x + rShoulder.x) / 2;
+                let headDelta = (nose.x - center);
+                if (state.calibration.calibrated) {
+                    headDelta -= state.calibration.neutralHeadDiff;
+                }
+                const absoluteDiff = Math.abs(headDelta);
 
-                if (headLeaningX > 0.08) {
-                    const leanPenalty = Math.min(25, Math.round(headLeaningX * 200));
-                    postureScore -= leanPenalty;
+                if (absoluteDiff > 0.075) {
+                    const penalty = Math.min(25, Math.round(absoluteDiff * 220));
+                    postureScore -= penalty;
                     alignLeaning.textContent = "Leaning";
-                    alignLeaning.className = "font-mono text-amber-400 font-bold";
-                    feedbackTips.push("Align head centered.");
+                    alignLeaning.className = "font-mono text-orange-500 font-bold";
+                    feedbackTips.push("Center your head.");
                 } else {
                     alignLeaning.textContent = "Centered";
-                    alignLeaning.className = "font-mono text-emerald-400 font-bold";
+                    alignLeaning.className = "font-mono text-teal-600 font-bold";
                 }
             } else {
                 alignLeaning.textContent = "Detecting...";
-                alignLeaning.className = "font-mono text-slate-500 font-bold";
+                alignLeaning.className = "font-mono text-slate-400 font-bold";
             }
 
+            // Posture evaluation normalization
             postureScore = Math.max(0, postureScore);
             setPostureProgress(postureScore);
 
             if (feedbackTips.length > 0) {
                 postureTips.textContent = feedbackTips.join(' ');
             } else if (lShoulder.visibility > 0.5) {
-                postureTips.textContent = "Great alignment! Keep this pose.";
+                postureTips.textContent = "Posture aligned. Maintain core activation.";
             } else {
-                postureTips.textContent = "Please stand in frame view.";
+                postureTips.textContent = "Please stand 2 meters from camera.";
             }
         }
 
@@ -981,11 +1031,12 @@
                 }, 600);
 
             } catch (err) {
-                showAlert("Failed to initialize Pose Engine: " + err.message);
-                loadProgress.style.backgroundColor = "#f43f5e";
+                showAlert("Failed to load clinical pose neural engine: " + err.message);
+                loadProgress.style.backgroundColor = "#ef4444";
             }
         }
 
+        // Handle model complexity selection adjustments
         modelComplexitySelect.addEventListener('change', () => {
             if (poseTracker) {
                 poseTracker.setOptions({
@@ -994,24 +1045,22 @@
             }
         });
 
-        // Native Frame Processing Loop (REPLACES camera_utils.js Camera logic entirely)
+        // Trigger manual frame pipeline
         async function processFrameLoop() {
             if (!state.videoActive) return;
 
             try {
-                // Check if video is loaded and playing with active frames
                 if (videoElement.readyState >= 2 && videoElement.videoWidth > 0) {
                     await poseTracker.send({ image: videoElement });
                 }
             } catch (err) {
-                console.warn("Pose processing frame skipped or failed:", err);
+                console.warn("Pose skip:", err);
             }
 
-            // Schedule the next frame recursively
             state.animationFrameId = requestAnimationFrame(processFrameLoop);
         }
 
-        // Clean closure for camera streams
+        // Stop current active feed
         function stopActiveStream() {
             state.videoActive = false;
             if (state.animationFrameId) {
@@ -1025,21 +1074,19 @@
             videoElement.srcObject = null;
         }
 
-        // Initialize user device video with secure permission fallbacks
+        // Initialize user device video with secure permission checks
         async function startCameraSession() {
             if (!state.modelLoaded) {
-                showAlert("Model engine is currently initializing, please wait.");
+                showAlert("Engine is currently loading weights. Please wait a moment.");
                 return;
             }
 
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showAlert("Secure context required! Ensure you are accessing your Vercel deployment via https://");
+                showAlert("Secure context protocol required. Verify you are using HTTPS on Vercel deployment.");
                 return;
             }
 
             const deviceId = cameraSelect.value;
-            
-            // Generate robust constraints dynamically
             let constraints = { audio: false };
             if (deviceId && deviceId !== 'default') {
                 constraints.video = { deviceId: { exact: deviceId } };
@@ -1056,9 +1103,8 @@
 
                 try {
                     activeStream = await navigator.mediaDevices.getUserMedia(constraints);
-                } catch (constraintErr) {
-                    console.warn("Target constraint failed, falling back to simple video...", constraintErr);
-                    // Fall back to general camera initialization on mobile/Safari
+                } catch (fallbackErr) {
+                    console.warn("Target options denied. Requesting general camera...", fallbackErr);
                     activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 }
 
@@ -1072,33 +1118,31 @@
 
                 await videoElement.play();
 
-                // Trigger manual frame loop
                 state.videoActive = true;
                 processFrameLoop();
 
-                btnCameraText.textContent = "Pause Session";
-                btnCameraToggle.className = "col-span-1 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]";
+                btnCameraText.textContent = "Pause Analytics";
+                btnCameraToggle.className = "col-span-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md active:scale-[0.98]";
                 
-                statusPulse.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75";
-                statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-emerald-500";
-                statusText.textContent = "Live Tracking";
+                statusPulse.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75";
+                statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500";
+                statusText.textContent = "Active Tracking";
                 placeholder.classList.add('hidden');
                 canvasElement.classList.remove('opacity-0');
                 canvasElement.classList.add('opacity-100');
 
-                // Enumerate cameras to populate localized labels now that browser permission is verified
+                // Reload actual device list now that user has granted camera permissions
                 getDevices();
 
             } catch (err) {
-                console.error("Camera setup failed:", err);
+                console.error("Camera access failed:", err);
                 
-                // Present intuitive actionable fixes depending on the browser issue
                 if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
                     showAlert("Camera Permission Denied! Click the 'lock' icon in your browser URL search bar, allow camera permissions, and refresh.");
                 } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
                     showAlert("Hardware webcam is locked! Close other software using the camera (Zoom, MS Teams, OBS) and retry.");
                 } else {
-                    showAlert(`Initialization error: ${err.message || err.name}`);
+                    showAlert(`Access denied: Ensure HTTPS deployment context is active on Vercel.`);
                 }
 
                 state.videoActive = false;
@@ -1111,7 +1155,7 @@
             if (state.videoActive) {
                 stopActiveStream();
                 btnCameraText.textContent = "Activate Webcam";
-                btnCameraToggle.className = "col-span-1 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]";
+                btnCameraToggle.className = "col-span-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md active:scale-[0.98]";
                 
                 statusPulse.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
                 statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
@@ -1126,11 +1170,21 @@
 
         btnCameraToggle.addEventListener('click', toggleWebcam);
 
+        // Calibrate button event
+        btnCalibrate.addEventListener('click', () => {
+            if (!state.videoActive) {
+                showAlert("Please start the webcam and stand in view before calibrating.");
+                return;
+            }
+            window.pendingCalibration = true;
+            showAlert("Calibrating perfect posture... Stand straight in 3... 2... 1...");
+        });
+
         // Capture snapshot from canvas frame
         let snapCount = 0;
         btnCapture.addEventListener('click', () => {
             if (!state.videoActive) {
-                showAlert("Capture rejected: Web camera feed is currently inactive.");
+                showAlert("Webcam feed is currently offline. Please activate the webcam first.");
                 return;
             }
 
@@ -1141,22 +1195,22 @@
             }
 
             snapCount++;
-            galleryCountLabel.textContent = `${snapCount} image${snapCount > 1 ? 's' : ''} captured`;
+            galleryCountLabel.textContent = `${snapCount} frame${snapCount > 1 ? 's' : ''} captured`;
 
             const card = document.createElement('div');
-            card.className = "relative min-w-[120px] w-[120px] aspect-video bg-slate-900 rounded-lg border border-slate-800 overflow-hidden group hover:border-brand-500 transition-all cursor-pointer";
+            card.className = "relative min-w-[120px] w-[120px] aspect-video bg-slate-900 rounded-lg border border-slate-200 overflow-hidden group hover:border-teal-500 transition-all cursor-pointer shadow-sm";
             
             const img = document.createElement('img');
             img.src = dataURL;
             img.className = "w-full h-full object-cover";
             
             const overlay = document.createElement('div');
-            overlay.className = "absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity";
+            overlay.className = "absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity";
             
             const btnDl = document.createElement('a');
             btnDl.href = dataURL;
-            btnDl.download = `skeltrack_capture_${Date.now()}.png`;
-            btnDl.innerHTML = `<i class="fa-solid fa-download text-white text-xs p-1.5 bg-brand-500 rounded hover:bg-brand-600 transition-colors"></i>`;
+            btnDl.download = `step2track_capture_${Date.now()}.png`;
+            btnDl.innerHTML = `<i class="fa-solid fa-download text-white text-xs p-1.5 bg-teal-600 rounded hover:bg-teal-700 transition-colors"></i>`;
             
             const btnDel = document.createElement('button');
             btnDel.innerHTML = `<i class="fa-solid fa-trash text-white text-xs p-1.5 bg-rose-500 rounded hover:bg-rose-600 transition-colors"></i>`;
@@ -1164,7 +1218,7 @@
                 e.stopPropagation();
                 card.remove();
                 snapCount--;
-                galleryCountLabel.textContent = `${snapCount} image${snapCount > 1 ? 's' : ''} captured`;
+                galleryCountLabel.textContent = `${snapCount} frame${snapCount > 1 ? 's' : ''} captured`;
                 if (snapCount === 0) {
                     snapshotGallery.appendChild(galleryEmptyText);
                 }
