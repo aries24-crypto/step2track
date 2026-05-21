@@ -34,8 +34,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- MediaPipe Pose Dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <!-- MediaPipe Pose Core Dependency (REMOVED camera_utils.js to prevent double-claim conflicts) -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 
     <style>
@@ -260,7 +259,7 @@
                             <i class="fa-solid fa-camera"></i> Input Source
                         </label>
                         <select id="camera-select" class="bg-slate-900/90 border border-slate-800 text-xs text-slate-200 rounded-lg p-2.5 outline-none focus:border-brand-500 transition-colors">
-                            <option value="default">Loading Cameras...</option>
+                            <option value="default">Default Device</option>
                         </select>
                     </div>
                     <div class="flex flex-col gap-1.5">
@@ -488,7 +487,8 @@
                 bones: true,
                 hands: true,
                 glow: true
-            }
+            },
+            animationFrameId: null // Stores active rendering loop instance
         };
 
         // DOM elements
@@ -549,7 +549,6 @@
 
         let poseTracker = null;
         let activeStream = null;
-        let poseCamera = null;
         let frameCount = 0;
         let fpsStartTime = performance.now();
 
@@ -561,7 +560,7 @@
             alertBanner.classList.add('translate-y-0');
             setTimeout(() => {
                 hideAlert();
-            }, 6000);
+            }, 8000);
         }
 
         function hideAlert() {
@@ -590,18 +589,21 @@
 
         [toggleFace, toggleBones, toggleHands, toggleGlow].forEach(el => el.addEventListener('change', updateOptions));
 
-        // Get video input list
+        // Get video input list (Enumerate Devices only succeeds *after* permissions are allowed)
         async function getDevices() {
             try {
                 const devices = await navigator.mediaDevices.enumerateDevices();
                 const videoDevices = devices.filter(device => device.kind === 'videoinput');
                 
                 cameraSelect.innerHTML = '';
-                if(videoDevices.length === 0) {
-                    const opt = document.createElement('option');
-                    opt.value = "none";
-                    opt.text = "No cameras detected";
-                    cameraSelect.appendChild(opt);
+                
+                // Add default device placeholder
+                const optDefault = document.createElement('option');
+                optDefault.value = "default";
+                optDefault.text = "Default System Webcam";
+                cameraSelect.appendChild(optDefault);
+
+                if (videoDevices.length === 0) {
                     return;
                 }
 
@@ -612,14 +614,13 @@
                     cameraSelect.appendChild(option);
                 });
             } catch (err) {
-                showAlert("Could not list video inputs: " + err.message);
+                console.warn("Could not list webcam devices: " + err.message);
             }
         }
 
-        // Helper Math to find 2D/3D angle in degrees
+        // Helper Math to find 2D angle in degrees
         function calculateAngle(A, B, C) {
             if (!A || !B || !C) return 0;
-            // 2D Vector calculations (highly robust for plane-projections)
             const BA = { x: A.x - B.x, y: A.y - B.y };
             const BC = { x: C.x - B.x, y: C.y - B.y };
 
@@ -630,7 +631,6 @@
             if (magBA * magBC === 0) return 0;
             
             let cosTheta = dotProduct / (magBA * magBC);
-            // Cap to avoid rounding precision floating-point error out of [-1, 1] range
             cosTheta = Math.max(-1, Math.min(1, cosTheta));
             
             const angleRad = Math.acos(cosTheta);
@@ -645,8 +645,7 @@
             const offset = circ - (score / 100) * circ;
             postureScoreCircle.style.strokeDashoffset = offset;
 
-            // Shift colors depending on posture rating
-            if(score >= 80) {
+            if (score >= 80) {
                 postureScoreCircle.setAttribute('stroke', '#10b981'); // Emerald
                 postureStateBadge.textContent = "Excellent";
                 postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-emerald-950 text-emerald-400";
@@ -707,7 +706,6 @@
 
         // Main Rendering Frame Callback
         function onPoseResults(results) {
-            // Measure engine pipeline latency
             const now = performance.now();
             const frameLatency = Math.round(now - state.lastFrameTime);
             state.lastFrameTime = now;
@@ -721,7 +719,6 @@
                 state.latencyCount = 1;
             }
 
-            // Frame count calculation
             frameCount++;
             const totalElapsed = now - fpsStartTime;
             if (totalElapsed >= 1000) {
@@ -730,28 +727,25 @@
                 fpsStartTime = now;
             }
 
-            // Canvas preparation
+            // Canvas clear and mirror
             canvasCtx.save();
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             
-            // Draw camera frame mirroring source
             canvasCtx.translate(canvasElement.width, 0);
             canvasCtx.scale(-1, 1);
             canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-            canvasCtx.restore(); // Restore mirroring transforms
+            canvasCtx.restore();
 
-            // Verify landmarks exist
             if (results.poseLandmarks) {
                 const landmarks = results.poseLandmarks;
                 
-                // Track dynamic visualization overrides
                 const drawBones = state.options.bones;
                 const drawFace = state.options.face;
                 const drawHands = state.options.hands;
                 const enableGlow = state.options.glow;
                 
                 const themeColor = state.activeColor;
-                const accentColor = "#10b981"; // Emerald green
+                const accentColor = "#10b981"; 
                 
                 // Confidence estimation
                 let totalVis = 0;
@@ -767,20 +761,18 @@
                     confidenceIndicator.className = "w-2 h-2 rounded-full bg-rose-500 inline-block";
                 }
 
-                // Core Pose & Posture Computations
+                // Pose and Posture computations
                 processPostureMetrics(landmarks);
 
-                // Re-mirror landmarks dynamically so we don't draw standard joints in reverse
                 const mirroredLandmarks = landmarks.map(lm => ({
-                    x: 1 - lm.x, // Flip X coordinate to align with mirrored webcam view
+                    x: 1 - lm.x, 
                     y: lm.y,
                     z: lm.z,
                     visibility: lm.visibility
                 }));
 
-                // Draw Core Bones (Connecting joints)
+                // Connect Joint Bones
                 if (drawBones) {
-                    // Face Connectors (if toggled)
                     if (drawFace) {
                         const nose = mirroredLandmarks[0];
                         const leftEye = mirroredLandmarks[2];
@@ -795,27 +787,24 @@
                     }
 
                     // Upper Torso & Shoulders
-                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[12], themeColor, 4, enableGlow); // Shoulder to shoulder
-                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[23], themeColor, 3.5, enableGlow); // Left shoulder to hip
-                    drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[24], themeColor, 3.5, enableGlow); // Right shoulder to hip
-                    drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[24], themeColor, 4, enableGlow); // Hip to hip
+                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[12], themeColor, 4, enableGlow); 
+                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[23], themeColor, 3.5, enableGlow); 
+                    drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[24], themeColor, 3.5, enableGlow); 
+                    drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[24], themeColor, 4, enableGlow); 
 
-                    // Left Arm Segment
+                    // Arms
                     drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[13], themeColor, 3, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[13], mirroredLandmarks[15], themeColor, 3, enableGlow);
-
-                    // Right Arm Segment
                     drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[14], themeColor, 3, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[14], mirroredLandmarks[16], themeColor, 3, enableGlow);
 
-                    // Left Leg Segment
+                    // Legs
                     drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[25], themeColor, 3.5, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[25], mirroredLandmarks[27], themeColor, 3.5, enableGlow);
-                    drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[29], themeColor, 2, false); // Foot heels/ankles
+                    drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[29], themeColor, 2, false); 
                     drawSegment(canvasCtx, mirroredLandmarks[29], mirroredLandmarks[31], themeColor, 2.5, false);
                     drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[31], themeColor, 2, false);
 
-                    // Right Leg Segment
                     drawSegment(canvasCtx, mirroredLandmarks[24], mirroredLandmarks[26], themeColor, 3.5, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[26], mirroredLandmarks[28], themeColor, 3.5, enableGlow);
                     drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[30], themeColor, 2, false);
@@ -823,27 +812,21 @@
                     drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[32], themeColor, 2, false);
                 }
 
-                // Draw Joint Knuckles / Core Dots
-                // Face Points
+                // Draw Dots
                 if (drawFace) {
-                    const faceIndices = [0, 2, 5, 7, 8];
-                    faceIndices.forEach(idx => {
-                        drawJointDot(canvasCtx, mirroredLandmarks[idx], '#f59e0b', 4, false); // Amber color for face reference
+                    [0, 2, 5, 7, 8].forEach(idx => {
+                        drawJointDot(canvasCtx, mirroredLandmarks[idx], '#f59e0b', 4, false);
                     });
                 }
 
-                // Arms / Legs / Body joints
-                const bodyJoints = [11, 12, 13, 14, 23, 24, 25, 26, 27, 28];
-                bodyJoints.forEach(idx => {
+                [11, 12, 13, 14, 23, 24, 25, 26, 27, 28].forEach(idx => {
                     drawJointDot(canvasCtx, mirroredLandmarks[idx], themeColor, 6, enableGlow);
                 });
 
-                // Hands Elements
                 if (drawHands) {
                     const leftHandGroup = [15, 17, 19, 21];
                     const rightHandGroup = [16, 18, 20, 22];
 
-                    // Draw connecting segments for hand extremities
                     drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[17], accentColor, 1.5, false);
                     drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[19], accentColor, 1.5, false);
                     drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[21], accentColor, 1.5, false);
@@ -860,7 +843,6 @@
 
         // Processing & Extracting Posture/Joint Analytics
         function processPostureMetrics(landmarks) {
-            // Get relevant joints
             const lShoulder = landmarks[11];
             const rShoulder = landmarks[12];
             const lElbow = landmarks[13];
@@ -899,7 +881,7 @@
             barHipL.style.width = `${Math.min(100, (flexHipL / 180) * 100)}%`;
             barHipR.style.width = `${Math.min(100, (flexHipR / 180) * 100)}%`;
 
-            // 2. Compute Alignments for Posture Scoring (Y coordinates: top of screen is 0, bottom is 1)
+            // 2. Compute Alignments
             let postureScore = 100;
             let feedbackTips = [];
 
@@ -937,7 +919,6 @@
                 alignHips.className = "font-mono text-slate-500 font-bold";
             }
 
-            // Head forward alignment / Leaning (compare nose to neck center)
             if (nose.visibility > 0.6 && lShoulder.visibility > 0.6 && rShoulder.visibility > 0.6) {
                 const shoulderCenterX = (lShoulder.x + rShoulder.x) / 2;
                 const headLeaningX = Math.abs(nose.x - shoulderCenterX);
@@ -957,7 +938,6 @@
                 alignLeaning.className = "font-mono text-slate-500 font-bold";
             }
 
-            // Fallback posture scoring constraints
             postureScore = Math.max(0, postureScore);
             setPostureProgress(postureScore);
 
@@ -979,7 +959,6 @@
                     }
                 });
 
-                // Configure pose model parameters
                 poseTracker.setOptions({
                     modelComplexity: parseInt(modelComplexitySelect.value),
                     smoothLandmarks: true,
@@ -989,13 +968,11 @@
                     minTrackingConfidence: 0.55
                 });
 
-                // Set callback result handler
                 poseTracker.onResults(onPoseResults);
                 
                 state.modelLoaded = true;
                 loadProgress.style.width = "100%";
                 
-                // Hide loading overlay smoothly
                 setTimeout(() => {
                     loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
                     statusPulse.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
@@ -1009,7 +986,6 @@
             }
         }
 
-        // Handle camera option modification
         modelComplexitySelect.addEventListener('change', () => {
             if (poseTracker) {
                 poseTracker.setOptions({
@@ -1018,57 +994,88 @@
             }
         });
 
-        // Initialize user device video
+        // Native Frame Processing Loop (REPLACES camera_utils.js Camera logic entirely)
+        async function processFrameLoop() {
+            if (!state.videoActive) return;
+
+            try {
+                // Check if video is loaded and playing with active frames
+                if (videoElement.readyState >= 2 && videoElement.videoWidth > 0) {
+                    await poseTracker.send({ image: videoElement });
+                }
+            } catch (err) {
+                console.warn("Pose processing frame skipped or failed:", err);
+            }
+
+            // Schedule the next frame recursively
+            state.animationFrameId = requestAnimationFrame(processFrameLoop);
+        }
+
+        // Clean closure for camera streams
+        function stopActiveStream() {
+            state.videoActive = false;
+            if (state.animationFrameId) {
+                cancelAnimationFrame(state.animationFrameId);
+                state.animationFrameId = null;
+            }
+            if (activeStream) {
+                activeStream.getTracks().forEach(track => track.stop());
+                activeStream = null;
+            }
+            videoElement.srcObject = null;
+        }
+
+        // Initialize user device video with secure permission fallbacks
         async function startCameraSession() {
             if (!state.modelLoaded) {
                 showAlert("Model engine is currently initializing, please wait.");
                 return;
             }
 
-            // Explicit warning if browser doesn't expose the mediaDevices API (typical of file:// protocol)
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                document.getElementById('protocol-warning').classList.remove('hidden');
-                showAlert("Webcam access blocked: Secure browser context is required.");
+                showAlert("Secure context required! Ensure you are accessing your Vercel deployment via https://");
                 return;
             }
 
             const deviceId = cameraSelect.value;
-            const constraints = {
-                video: deviceId === 'default' ? true : { deviceId: { exact: deviceId } },
-                audio: false
-            };
+            
+            // Generate robust constraints dynamically
+            let constraints = { audio: false };
+            if (deviceId && deviceId !== 'default') {
+                constraints.video = { deviceId: { exact: deviceId } };
+            } else {
+                constraints.video = {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: "user"
+                };
+            }
 
             try {
-                // Clear any running stream
-                if (activeStream) {
-                    activeStream.getTracks().forEach(track => track.stop());
+                stopActiveStream();
+
+                try {
+                    activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+                } catch (constraintErr) {
+                    console.warn("Target constraint failed, falling back to simple video...", constraintErr);
+                    // Fall back to general camera initialization on mobile/Safari
+                    activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
                 }
 
-                activeStream = await navigator.mediaDevices.getUserMedia(constraints);
                 videoElement.srcObject = activeStream;
-                await videoElement.play();
-
-                // Get dynamic aspect-ratio sizing
+                
                 videoElement.onloadedmetadata = () => {
                     canvasElement.width = videoElement.videoWidth;
                     canvasElement.height = videoElement.videoHeight;
                     resolutionLabel.textContent = `Res: ${videoElement.videoWidth} x ${videoElement.videoHeight}`;
                 };
 
-                // Setup MediaPipe camera pipeline loop
-                poseCamera = new Camera(videoElement, {
-                    onFrame: async () => {
-                        if (state.videoActive) {
-                            await poseTracker.send({ image: videoElement });
-                        }
-                    },
-                    width: 640,
-                    height: 480
-                });
+                await videoElement.play();
 
-                await poseCamera.start();
-
+                // Trigger manual frame loop
                 state.videoActive = true;
+                processFrameLoop();
+
                 btnCameraText.textContent = "Pause Session";
                 btnCameraToggle.className = "col-span-1 bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]";
                 
@@ -1079,8 +1086,21 @@
                 canvasElement.classList.remove('opacity-0');
                 canvasElement.classList.add('opacity-100');
 
+                // Enumerate cameras to populate localized labels now that browser permission is verified
+                getDevices();
+
             } catch (err) {
-                showAlert("Failed to access camera feed: " + err.message);
+                console.error("Camera setup failed:", err);
+                
+                // Present intuitive actionable fixes depending on the browser issue
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    showAlert("Camera Permission Denied! Click the 'lock' icon in your browser URL search bar, allow camera permissions, and refresh.");
+                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+                    showAlert("Hardware webcam is locked! Close other software using the camera (Zoom, MS Teams, OBS) and retry.");
+                } else {
+                    showAlert(`Initialization error: ${err.message || err.name}`);
+                }
+
                 state.videoActive = false;
                 btnCameraText.textContent = "Activate Webcam";
             }
@@ -1089,14 +1109,7 @@
         // Toggle webcam activity state
         function toggleWebcam() {
             if (state.videoActive) {
-                // Pause pipeline processing
-                state.videoActive = false;
-                if (activeStream) {
-                    activeStream.getTracks().forEach(track => track.stop());
-                }
-                if (poseCamera) {
-                    poseCamera.stop();
-                }
+                stopActiveStream();
                 btnCameraText.textContent = "Activate Webcam";
                 btnCameraToggle.className = "col-span-1 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]";
                 
@@ -1116,22 +1129,20 @@
         // Capture snapshot from canvas frame
         let snapCount = 0;
         btnCapture.addEventListener('click', () => {
-            if(!state.videoActive) {
+            if (!state.videoActive) {
                 showAlert("Capture rejected: Web camera feed is currently inactive.");
                 return;
             }
 
             const dataURL = canvasElement.toDataURL('image/png');
             
-            // Remove empty gallery helper
-            if(galleryEmptyText) {
+            if (galleryEmptyText) {
                 galleryEmptyText.remove();
             }
 
             snapCount++;
             galleryCountLabel.textContent = `${snapCount} image${snapCount > 1 ? 's' : ''} captured`;
 
-            // Create canvas card element
             const card = document.createElement('div');
             card.className = "relative min-w-[120px] w-[120px] aspect-video bg-slate-900 rounded-lg border border-slate-800 overflow-hidden group hover:border-brand-500 transition-all cursor-pointer";
             
@@ -1142,13 +1153,11 @@
             const overlay = document.createElement('div');
             overlay.className = "absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity";
             
-            // Download snapshot
             const btnDl = document.createElement('a');
             btnDl.href = dataURL;
             btnDl.download = `skeltrack_capture_${Date.now()}.png`;
             btnDl.innerHTML = `<i class="fa-solid fa-download text-white text-xs p-1.5 bg-brand-500 rounded hover:bg-brand-600 transition-colors"></i>`;
             
-            // Remove element button
             const btnDel = document.createElement('button');
             btnDel.innerHTML = `<i class="fa-solid fa-trash text-white text-xs p-1.5 bg-rose-500 rounded hover:bg-rose-600 transition-colors"></i>`;
             btnDel.addEventListener('click', (e) => {
@@ -1156,7 +1165,7 @@
                 card.remove();
                 snapCount--;
                 galleryCountLabel.textContent = `${snapCount} image${snapCount > 1 ? 's' : ''} captured`;
-                if(snapCount === 0) {
+                if (snapCount === 0) {
                     snapshotGallery.appendChild(galleryEmptyText);
                 }
             });
@@ -1167,17 +1176,14 @@
             card.appendChild(overlay);
 
             snapshotGallery.insertBefore(card, snapshotGallery.firstChild);
-            // Auto scroll gallery to newest snapshot
             snapshotGallery.scrollLeft = 0;
         });
 
         // Initialize setup on window load
         window.onload = () => {
-            // Progressive load simulation
             setTimeout(() => { loadProgress.style.width = "40%"; }, 200);
             setTimeout(() => { loadProgress.style.width = "75%"; }, 400);
             
-            // Check if application is loaded via insecure file protocol
             if (window.location.protocol === 'file:') {
                 document.getElementById('protocol-warning').classList.remove('hidden');
             } else {
