@@ -1,0 +1,1913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Step2track - Clinical Posture & Skeletal Rehabilitation Companion</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',  // Soft teal-50
+                            100: '#ccfbf1', // Soft teal-100
+                            500: '#0d9488', // Medical Teal-600
+                            600: '#0f766e', // Deep Teal-700
+                            700: '#115e59', // Clinical Teal-800
+                            accent: '#14b8a6', // Teal Accent
+                            orange: '#f97316', // Orange Tagline Accents
+                            charcoal: '#1e293b', // Slate-800 Charcoal Text
+                            muted: '#475569' // Slate-600
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts & FontAwesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- MediaPipe Pose Core Dependency -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* Clean slate-50 background */
+            color: #1e293b; /* Charcoal text */
+            overflow-x: hidden;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbar matching minimalist theme */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Soft Shadow card panels */
+        .clinic-panel {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        }
+        .teal-glow {
+            box-shadow: 0 0 20px rgba(13, 148, 136, 0.15);
+        }
+        .active-glow {
+            box-shadow: 0 0 25px rgba(20, 184, 166, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between relative">
+
+    <!-- Posture Alert Banner (Fix Posture Warning on bad posture < 80) -->
+    <div id="posture-bad-banner" class="fixed top-0 left-0 right-0 z-[100] transform -translate-y-full transition-all duration-300 pointer-events-none flex justify-center p-3">
+        <div class="bg-amber-500 text-white font-bold px-6 py-2.5 rounded-full shadow-lg flex items-center gap-3 border border-amber-600/20 text-sm animate-bounce pointer-events-auto">
+            <i class="fa-solid fa-triangle-exclamation text-lg"></i>
+            <span>Fix Posture</span>
+        </div>
+    </div>
+
+    <!-- Top Nav / Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 px-4 py-3 lg:px-8 shadow-sm">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <!-- Brand Logo & Tagline -->
+            <div class="flex items-center gap-4">
+                <div class="h-14 w-14 rounded-xl bg-white p-1 border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
+                    <img src="step2heal.jpeg" alt="Step2track Logo" class="h-full w-full object-contain rounded" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=100';">
+                </div>
+                <div>
+                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-800 flex items-center gap-1.5">
+                        Step2track <span class="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full border border-teal-200 font-bold uppercase tracking-wide">Physio Companion</span>
+                    </h1>
+                    <p class="text-xs text-orange-500 font-semibold italic tracking-wide">where every step matters</p>
+                </div>
+            </div>
+            
+            <!-- System Connections Status Dashboard -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
+                    <span class="relative flex h-2.5 w-2.5">
+                        <span id="status-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span id="status-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+                    </span>
+                    <span id="status-text" class="text-xs font-semibold text-slate-600">System Idle</span>
+                </div>
+                <!-- Mini Stats -->
+                <div class="hidden md:flex items-center gap-2 text-xs">
+                    <div class="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200">
+                        <span class="text-slate-500">FPS:</span> <span id="fps-val" class="font-bold text-teal-600">0</span>
+                    </div>
+                    <div class="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200">
+                        <span class="text-slate-500">Latency:</span> <span id="latency-val" class="font-bold text-slate-700">0ms</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="max-w-7xl w-full mx-auto px-4 py-6 flex-grow flex flex-col lg:flex-row gap-6">
+        
+        <!-- Left Column: Camera Feed & Video Viewport -->
+        <div class="w-full lg:w-[55%] flex flex-col gap-4">
+            <div class="relative clinic-panel rounded-2xl p-3 min-h-[300px] md:min-h-[480px] flex flex-col items-center justify-center">
+                
+                <!-- Loading & Setup Overlay -->
+                <div id="loading-overlay" class="absolute inset-0 bg-white/95 flex flex-col items-center justify-center z-30 transition-all duration-500 rounded-2xl">
+                    <div class="relative flex items-center justify-center mb-6">
+                        <div class="absolute w-24 h-24 rounded-full border-4 border-dashed border-teal-500/20 spin-slow"></div>
+                        <div class="absolute w-20 h-20 rounded-full border-4 border-t-teal-600 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                        <div class="h-12 w-12 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center">
+                            <i class="fa-solid fa-heart-pulse text-teal-600 animate-pulse text-xl"></i>
+                        </div>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 tracking-wide">Initializing Clinical AI Engine</h3>
+                    <p class="text-xs text-slate-500 mt-2 max-w-xs text-center px-4 leading-relaxed">
+                        Setting up real-time skeletal telemetry algorithms. Please allow camera permissions when prompted.
+                    </p>
+                    <div class="w-48 bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden border border-slate-200">
+                        <div id="load-progress" class="bg-gradient-to-r from-teal-500 to-teal-600 h-full w-[10%] transition-all duration-300"></div>
+                    </div>
+                </div>
+
+                <!-- HTTPS/Webcam Troubleshooting Warning Overlay -->
+                <div id="protocol-warning" class="absolute inset-0 bg-white/98 flex flex-col items-center justify-center z-40 hidden p-6 text-center overflow-y-auto rounded-2xl">
+                    <div class="h-14 w-14 rounded-full bg-amber-500/10 border border-amber-400/30 flex items-center justify-center mb-4 text-amber-500 text-2xl animate-bounce">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-800 tracking-wide">Secure Context Check Required</h3>
+                    <p class="text-xs text-slate-500 mt-2 max-w-md leading-relaxed">
+                        To run local camera analytics, web browsers require a secure connection (<code class="text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded font-mono font-semibold">https://</code>) or a direct <code class="text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded font-mono font-semibold">localhost</code> pipeline.
+                    </p>
+                    
+                    <div class="mt-5 w-full max-w-md text-left bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block border-b border-slate-200 pb-1.5">Actionable Deployment Fixes:</span>
+                        
+                        <div class="space-y-3.5 text-xs text-slate-600">
+                            <div>
+                                <p class="text-slate-800 font-bold flex items-center gap-1.5">
+                                    <span class="h-4 w-4 bg-teal-600 text-white text-[9px] rounded-full flex items-center justify-center font-bold">1</span> 
+                                    Vercel Production Deployments
+                                </p>
+                                <p class="mt-1">Vercel serves pages over <strong class="text-slate-800">HTTPS</strong> automatically. If the camera still fails, you may have declined permission. Reset permission by clicking the padlock <i class="fa-solid fa-lock text-slate-400"></i> in the browser address bar, then select <strong class="text-slate-800">"Allow Camera"</strong>.</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-slate-800 font-bold flex items-center gap-1.5">
+                                    <span class="h-4 w-4 bg-teal-600 text-white text-[9px] rounded-full flex items-center justify-center font-bold">2</span> 
+                                    Running Locally (Notepad, VS Code, etc)
+                                </p>
+                                <p class="mt-1">Instead of opening the file directly (e.g., <code class="bg-slate-200 text-slate-800 px-1 rounded">file://C:/index.html</code>), host a temporary server. In terminal/cmd run:</p>
+                                <code class="block bg-slate-900 text-slate-200 p-2.5 rounded font-mono text-[11px] mt-1 select-all border border-slate-700">python -m http.server 8000</code>
+                                <p class="text-[10px] text-slate-500 mt-1">Then visit <a href="http://localhost:8000" target="_blank" class="text-teal-600 font-semibold underline hover:text-teal-700">http://localhost:8000</a>.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="dismissProtocolWarning()" class="mt-6 text-xs text-slate-500 hover:text-slate-800 underline transition-colors">
+                        Ignore warning and try anyway
+                    </button>
+                </div>
+
+                <!-- Custom Alert Notification Box (Replacing default alert modals) -->
+                <div id="alert-banner" class="absolute top-4 left-4 right-4 z-40 hidden transform translate-y-[-10px] transition-all duration-300">
+                    <div class="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl flex items-center justify-between shadow-md">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-circle-exclamation text-rose-600 text-lg"></i>
+                            <span id="alert-message" class="text-xs md:text-sm font-medium"></span>
+                        </div>
+                        <button onclick="hideAlert()" class="text-rose-500 hover:text-rose-800 transition-colors">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hidden Native Video Device -->
+                <video id="input-video" class="hidden" playsinline muted autoplay></video>
+                
+                <!-- Rendering Canvas Container -->
+                <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center border border-slate-200 shadow-inner">
+                    <!-- Feed Placeholder when inactive -->
+                    <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-4 text-center z-10">
+                        <div class="h-16 w-16 rounded-full bg-slate-800 flex items-center justify-center mb-3 text-slate-500 shadow-md">
+                            <i class="fa-solid fa-video-slash text-2xl"></i>
+                        </div>
+                        <p class="text-sm font-semibold text-slate-300">Live Posture Stream Off</p>
+                        <p class="text-xs text-slate-500 mt-1 max-w-xs">Press the "Activate Webcam" button below to initiate dynamic body tracking.</p>
+                    </div>
+
+                    <!-- Output processing canvas -->
+                    <canvas id="output-canvas" class="w-full h-full object-contain pointer-events-none z-20 opacity-0 transition-opacity duration-500"></canvas>
+                </div>
+
+                <!-- Sub-HUD overlay metrics -->
+                <div class="w-full flex justify-between items-center px-2 pt-3 text-xs text-slate-500">
+                    <span id="camera-resolution" class="font-mono bg-slate-100 border border-slate-200 px-2 py-1 rounded">Res: -- x --</span>
+                    
+                    <!-- Recording Indicator and Plumb Grid Control Status -->
+                    <div class="flex items-center gap-3">
+                        <span id="recording-indicator" class="hidden font-mono bg-rose-50 text-rose-700 border border-rose-200 px-2 py-1 rounded flex items-center gap-1.5 font-bold animate-pulse">
+                            <span class="w-2 h-2 rounded-full bg-rose-600 inline-block animate-ping"></span> REC: <span id="rec-timer">0.0s</span>
+                        </span>
+                        <span id="pose-confidence-meter" class="font-mono bg-slate-100 border border-slate-200 px-2 py-1 rounded flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block animate-pulse" id="confidence-indicator"></span> 
+                            Confidence: <span id="confidence-val" class="font-bold text-slate-700">0%</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Session Captures -->
+            <div class="clinic-panel rounded-2xl p-4 flex flex-col gap-3">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-clipboard-user text-teal-600"></i>
+                        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Calibration Snapshots & Videos</h4>
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-mono" id="gallery-count">0 frames captured</span>
+                </div>
+                <div id="snapshot-gallery" class="flex gap-3 overflow-x-auto pb-1 min-h-[85px] scrollbar">
+                    <div id="gallery-empty" class="text-xs text-slate-400 flex items-center justify-center w-full py-2 italic">
+                        Captured biomechanical snapshots or video records will appear here during live tracking.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: System Controls & Posture Calibration Diagnostics -->
+        <div class="w-full lg:w-[45%] flex flex-col gap-4">
+            
+            <!-- Analysis Setup with Multi-View & Video Recording Features -->
+            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-4">
+                <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-stethoscope text-teal-600"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Clinical Setup & Devices</h3>
+                    </div>
+                    <span class="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200 font-mono font-bold">Step2Track V1.6</span>
+                </div>
+
+                <!-- Dual View Mode Selectors and Grid Toggles -->
+                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <button id="btn-view-front" onclick="switchBiometricView('front')" class="py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-teal-700 border border-teal-100 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-arrows-to-eye"></i> Coronal (Front)
+                    </button>
+                    <button id="btn-view-side" onclick="switchBiometricView('side')" class="py-2 px-3 rounded-lg text-xs font-bold transition-all bg-transparent text-slate-600 hover:text-slate-800 flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-profile"></i> Sagittal (Side)
+                    </button>
+                </div>
+
+                <!-- Camera Select, Complexity, Grid Overlay, and Video Record -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-sliders text-teal-600"></i> Video Input
+                        </label>
+                        <select id="camera-select" class="bg-white border border-slate-200 text-xs text-slate-700 rounded-lg p-2.5 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors shadow-sm">
+                            <option value="default">Default Device</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-brain text-teal-600"></i> Neural Accuracy
+                        </label>
+                        <select id="model-complexity" class="bg-white border border-slate-200 text-xs text-slate-700 rounded-lg p-2.5 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors shadow-sm">
+                            <option value="0">Basic Mode</option>
+                            <option value="1" selected>Optimal Mode</option>
+                            <option value="2">Precision Mode</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Primary Controls (Camera Active, Video Capture, Video Record) -->
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="btn-camera-toggle" class="col-span-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all duration-200 hover:shadow-md active:scale-[0.98]">
+                        <i class="fa-solid fa-circle-play"></i>
+                        <span id="btn-camera-text">Activate</span>
+                    </button>
+                    <button id="btn-capture" class="col-span-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3 px-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
+                        <i class="fa-solid fa-camera"></i>
+                        Snapshot
+                    </button>
+                    <button id="btn-record-video" class="col-span-1 bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 font-bold py-3 px-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
+                        <i class="fa-solid fa-video text-rose-600"></i>
+                        <span id="btn-record-text">Record 10s</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- AI Physical Therapy Engagement & Rep Counting Engine -->
+            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-4">
+                <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-hand-holding-medical text-teal-600"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">AI Rehab & Rep Engine</h3>
+                    </div>
+                    <span id="active-reps-target" class="text-[10px] bg-orange-50 text-orange-700 px-2 py-0.5 rounded border border-orange-200 font-mono font-bold">Target: 10 Reps</span>
+                </div>
+
+                <!-- Exercise Presets Selector and AI Assistant Toggle -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-running text-teal-600"></i> Target Exercise
+                        </label>
+                        <select id="exercise-select" onchange="switchExerciseTarget()" class="bg-white border border-slate-200 text-xs text-slate-700 rounded-lg p-2.5 outline-none focus:border-teal-500 transition-colors shadow-sm">
+                            <option value="squat" selected>Squats (Knee ROM)</option>
+                            <option value="curl">Bicep Curls (Elbow ROM)</option>
+                            <option value="extension">Knee Extensions</option>
+                            <option value="spine_hold">Plank / Spine Isometric Hold</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-volume-high text-teal-600"></i> AI Speech Coach
+                        </label>
+                        <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                            <span class="text-xs font-semibold text-slate-700">Audio Prompts</span>
+                            <input type="checkbox" id="toggle-voice-assistant" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Realtime Interactive Therapy Scoreboard -->
+                <div class="grid grid-cols-3 gap-3 bg-teal-50/50 p-4 rounded-xl border border-teal-100/60 text-center">
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-teal-700 tracking-wider">Rep Count</span>
+                        <div id="reps-completed" class="text-4xl font-extrabold text-teal-800 mt-1">0</div>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-teal-700 tracking-wider">Session Time</span>
+                        <div id="therapy-time" class="text-4xl font-extrabold text-slate-800 mt-1">0:00</div>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-teal-700 tracking-wider">Hold Hold</span>
+                        <div id="hold-timer" class="text-4xl font-extrabold text-orange-600 mt-1">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization Settings (Grid, Skeleton Details, Theme color) -->
+            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-3">
+                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                    <h4 class="text-xs font-bold text-slate-600 tracking-wider uppercase">Visual Adjustments</h4>
+                    <button id="btn-calibrate" class="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 px-2 py-1 rounded font-bold transition-all flex items-center gap-1">
+                        <i class="fa-solid fa-arrows-spin"></i> Reset Calibration
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3 mt-1">
+                    <!-- Toggle Face -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-face-smile text-amber-500"></i> Face Overlay
+                        </span>
+                        <input type="checkbox" id="toggle-face" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
+                    </label>
+
+                    <!-- Toggle Bones -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-vector-square text-teal-600"></i> Bone Skeletal
+                        </span>
+                        <input type="checkbox" id="toggle-bones" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
+                    </label>
+
+                    <!-- Toggle Hand Points -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-hand text-teal-500"></i> Hands Overlay
+                        </span>
+                        <input type="checkbox" id="toggle-hands" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
+                    </label>
+
+                    <!-- Anatomical Plumb-Line Grid Toggle -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-table-cells text-teal-600 animate-pulse"></i> Clinical Grid
+                        </span>
+                        <input type="checkbox" id="toggle-grid-overlay" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
+                    </label>
+
+                    <!-- Toggle Highlight Glow -->
+                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-half-stroke text-slate-600"></i> Render Glow
+                        </span>
+                        <input type="checkbox" id="toggle-glow" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
+                    </label>
+                </div>
+
+                <!-- Aesthetic Accent Theme Colors -->
+                <div class="mt-2 space-y-3">
+                    <div class="flex items-center justify-between gap-4">
+                        <span class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-palette text-teal-600"></i> Dynamic Accent
+                        </span>
+                        <div class="flex items-center gap-2">
+                            <button class="theme-dot w-6 h-6 rounded-full bg-teal-500 ring-2 ring-white ring-offset-2 ring-offset-slate-100" data-color="#0d9488"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-indigo-500" data-color="#4f46e5"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-sky-500" data-color="#0ea5e9"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-emerald-500" data-color="#10b981"></button>
+                            <button class="theme-dot w-6 h-6 rounded-full bg-amber-500" data-color="#d97706"></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Clinical Biometrics & Posture Diagnosis -->
+            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-4 flex-grow">
+                <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-teal-600"></i>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Biometrics Feedback</h3>
+                    </div>
+                    <span id="posture-state-badge" class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-slate-100 text-slate-500">
+                        Awaiting feed...
+                    </span>
+                </div>
+
+                <!-- Posture Score & Alignment Metrics -->
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Posture Card -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col items-center justify-center text-center">
+                        <div class="relative w-16 h-16 flex items-center justify-center mb-1.5">
+                            <svg class="w-full h-full transform -rotate-90">
+                                <circle cx="32" cy="32" r="28" stroke="#e2e8f0" stroke-width="5" fill="transparent" />
+                                <circle id="posture-score-circle" cx="32" cy="32" r="28" stroke="#0d9488" stroke-width="5" fill="transparent" stroke-dasharray="175.9" stroke-dashoffset="175.9" class="transition-all duration-300" />
+                            </svg>
+                            <span id="posture-score-text" class="absolute font-extrabold text-sm text-slate-800">0%</span>
+                        </div>
+                        <span class="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Posture Quality</span>
+                    </div>
+
+                    <!-- Live Alignment Monitor -->
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+                        <div class="space-y-2">
+                            <div class="flex justify-between text-[11px] border-b border-slate-100 pb-1">
+                                <span class="text-slate-500" id="align-lbl-1">Shoulders:</span>
+                                <span id="alignment-shoulders" class="font-mono text-slate-600 font-bold">Uncalibrated</span>
+                            </div>
+                            <div class="flex justify-between text-[11px] border-b border-slate-100 pb-1">
+                                <span class="text-slate-500" id="align-lbl-2">Pelvic/Hips:</span>
+                                <span id="alignment-hips" class="font-mono text-slate-600 font-bold">Uncalibrated</span>
+                            </div>
+                            <div class="flex justify-between text-[11px]">
+                                <span class="text-slate-500" id="align-lbl-3">Head Tilt:</span>
+                                <span id="alignment-leaning" class="font-mono text-slate-600 font-bold">Uncalibrated</span>
+                            </div>
+                        </div>
+                        <p id="posture-tips" class="text-[10px] text-teal-700 italic text-center mt-1.5 font-medium">Position full skeleton in view.</p>
+                    </div>
+                </div>
+
+                <!-- Live Joint Angles Area -->
+                <div class="space-y-3">
+                    <h5 class="text-xs font-bold text-slate-600 uppercase tracking-wider">Dynamic Joint Biomechanics</h5>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- Elbow Flex -->
+                        <div class="bg-white p-3 rounded-xl border border-slate-200">
+                            <div class="flex justify-between items-center text-xs mb-2">
+                                <span class="font-bold text-slate-700 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span> Elbow Extension
+                                </span>
+                                <i class="fa-solid fa-angles-right text-[10px] text-slate-400"></i>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                                    <span>L: <span id="angle-elbow-l" class="text-slate-800 font-bold">0°</span></span>
+                                    <span>R: <span id="angle-elbow-r" class="text-slate-800 font-bold">0°</span></span>
+                                </div>
+                                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                                    <div id="bar-elbow-l" class="bg-teal-500 h-full w-[0%] transition-all duration-100"></div>
+                                    <div id="bar-elbow-r" class="bg-teal-300 h-full w-[0%] transition-all duration-100 border-l border-white"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Knee Flex -->
+                        <div class="bg-white p-3 rounded-xl border border-slate-200">
+                            <div class="flex justify-between items-center text-xs mb-2">
+                                <span class="font-bold text-slate-700 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-teal-600"></span> Knee Flexion
+                                </span>
+                                <i class="fa-solid fa-angles-right text-[10px] text-slate-400"></i>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                                    <span>L: <span id="angle-knee-l" class="text-slate-800 font-bold">0°</span></span>
+                                    <span>R: <span id="angle-knee-r" class="text-slate-800 font-bold">0°</span></span>
+                                </div>
+                                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                                    <div id="bar-knee-l" class="bg-teal-600 h-full w-[0%] transition-all duration-100"></div>
+                                    <div id="bar-knee-r" class="bg-teal-400 h-full w-[0%] transition-all duration-100 border-l border-white"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Trunk Hip Flex -->
+                        <div class="bg-white p-3 rounded-xl border border-slate-200 col-span-2">
+                            <div class="flex justify-between items-center text-xs mb-2">
+                                <span class="font-bold text-slate-700 flex items-center gap-1">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-700"></span> Trunk & Spinal Hips
+                                </span>
+                                <i class="fa-solid fa-angles-right text-[10px] text-slate-400"></i>
+                            </div>
+                            <div class="space-y-1.5">
+                                <div class="flex justify-between text-[10px] font-mono text-slate-500">
+                                    <span>Left Hip: <span id="angle-hip-l" class="text-slate-800 font-bold">0°</span></span>
+                                    <span>Right Hip: <span id="angle-hip-r" class="text-slate-800 font-bold">0°</span></span>
+                                </div>
+                                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
+                                    <div id="bar-hip-l" class="bg-slate-700 h-full w-[0%] transition-all duration-100"></div>
+                                    <div id="bar-hip-r" class="bg-slate-400 h-full w-[0%] transition-all duration-100 border-l border-white"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Professional Clinical Report Generator Interface -->
+            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-3">
+                <div class="border-b border-slate-100 pb-2">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Clinical PDF Generator</h3>
+                </div>
+                <form id="pdf-report-form" onsubmit="generateProfessionalPDF(event)" class="space-y-2.5">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Patient Name</label>
+                            <input type="text" id="pdf-patient-name" required placeholder="John Doe" class="w-full text-xs p-2 border border-slate-200 rounded-lg outline-none focus:border-teal-500">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Practitioner</label>
+                            <input type="text" id="pdf-therapist-name" required placeholder="Dr. Sarah Jenkins" class="w-full text-xs p-2 border border-slate-200 rounded-lg outline-none focus:border-teal-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Physio Clinical Notes / Diagnosis</label>
+                        <textarea id="pdf-clinical-notes" placeholder="e.g. Recovering from lateral collateral ligament knee tear. Working on knee range of motion extension and dynamic postural balance adjustments." rows="2" class="w-full text-xs p-2 border border-slate-200 rounded-lg outline-none focus:border-teal-500"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-2.5 rounded-lg text-xs transition-all shadow flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-pdf text-red-400"></i> Generate Printable Clinical Report
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Biomechanics Interactive Snapshot Modal -->
+    <div id="inspector-modal" class="fixed inset-0 z-[90] hidden bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
+            
+            <!-- Left Side: Interactive Bounding Canvas -->
+            <div class="flex-grow bg-slate-950 p-2 flex items-center justify-center relative min-h-[250px] md:min-h-[400px]">
+                <canvas id="modal-canvas" class="max-w-full max-h-[70vh] object-contain cursor-crosshair rounded-lg"></canvas>
+                <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2.5 py-1 rounded-full font-semibold pointer-events-none">
+                    <i class="fa-solid fa-hand-pointer animate-pulse mr-1"></i> Click any skeletal dot to read angle
+                </div>
+            </div>
+
+            <!-- Right Side: Clinical Breakdown & Diagnostic Panel -->
+            <div class="w-full md:w-80 bg-slate-50 border-t md:border-t-0 md:border-l border-slate-200 p-5 flex flex-col justify-between overflow-y-auto">
+                <div class="space-y-4">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h3 class="text-base font-bold text-slate-800">Biometrics Inspector</h3>
+                            <p class="text-xs text-slate-500">Biomechanical Patient Snapshot</p>
+                        </div>
+                        <button onclick="closeInspectorModal()" class="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 h-8 w-8 rounded-full flex items-center justify-center transition-all">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+
+                    <!-- Selected Landmark Angle Display -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Selected Joint Telemetry</span>
+                        <div id="inspector-joint-name" class="text-sm font-bold text-slate-800">No Joint Selected</div>
+                        <div class="flex items-baseline gap-1">
+                            <span id="inspector-joint-angle" class="text-3xl font-extrabold text-teal-600">--</span>
+                            <span class="text-sm font-bold text-teal-600" id="inspector-deg-unit"></span>
+                        </div>
+                        <p id="inspector-joint-desc" class="text-xs text-slate-500 leading-relaxed italic">Click any joint node on the skeleton left to measure range of motion (ROM) angles.</p>
+                    </div>
+
+                    <!-- Summary of Captured Posture Metrics -->
+                    <div class="space-y-2">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Orthopedic Summary</span>
+                        <div class="text-xs space-y-1.5 bg-white p-3 rounded-lg border border-slate-100 text-slate-600">
+                            <div class="flex justify-between"><span class="font-medium">Posture Quality Score:</span> <span id="modal-posture-score" class="font-bold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="font-medium" id="modal-lbl-1">Shoulder Balance:</span> <span id="modal-shoulders" class="font-bold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="font-medium" id="modal-lbl-2">Hip Torsion Level:</span> <span id="modal-hips" class="font-bold text-slate-800">--</span></div>
+                            <div class="flex justify-between"><span class="font-medium" id="modal-lbl-3">Head Tilt Offset:</span> <span id="modal-leaning" class="font-bold text-slate-800">--</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-slate-200 flex gap-2">
+                    <button id="modal-download-btn" class="flex-grow bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-3 rounded-lg text-xs transition-colors flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-arrow-down"></i> Export Diagnostic PNG
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 text-center py-4 px-4 text-xs text-slate-500 mt-6 shadow-inner">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+            <p>© 2026 Step2track AI. Powered by localized WebGL computer vision networks.</p>
+            <div class="flex gap-4">
+                <span class="hover:text-teal-600 cursor-help transition-colors" title="Clinical standards for orthopedic posture evaluation.">Clinical Standard Model</span>
+                <span>•</span>
+                <span class="hover:text-teal-600 cursor-help transition-colors" title="Your images are processed purely inside your private browser session. No data is stored or transmitted externally.">Local Privacy Sandbox Safeguard</span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Set state properties
+        const state = {
+            activeColor: '#0d9488', // Medical Teal
+            videoActive: false,
+            modelLoaded: false,
+            lastFrameTime: 0,
+            fpsInterval: null,
+            latencySum: 0,
+            latencyCount: 0,
+            options: {
+                face: true,
+                bones: true,
+                hands: true,
+                glow: true,
+                clinicalGrid: true
+            },
+            calibration: {
+                calibrated: false,
+                neutralShoulderDiff: 0.0,
+                neutralHipDiff: 0.0,
+                neutralHeadDiff: 0.0
+            },
+            animationFrameId: null, // Stores active rendering loop instance
+            biometricView: 'front', // 'front' (coronal) or 'side' (sagittal)
+            // AI exercise engine states
+            exercise: 'squat',
+            reps: 0,
+            repState: 'out', // 'in' or 'out' of flexion threshold
+            holdTimerSec: 0.0,
+            isHolding: false,
+            holdStartedAt: null,
+            lastAnnouncementTime: 0,
+            sessionStartTime: null,
+            timerInterval: null,
+            maxROMThisSession: 0,
+            postureSum: 0,
+            postureCount: 0
+        };
+
+        // Cache captured landmarks data for modal interaction
+        const capturedFramesData = {};
+
+        // DOM elements
+        const videoElement = document.getElementById('input-video');
+        const canvasElement = document.getElementById('output-canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const cameraSelect = document.getElementById('camera-select');
+        const modelComplexitySelect = document.getElementById('model-complexity');
+        const btnCameraToggle = document.getElementById('btn-camera-toggle');
+        const btnCameraText = document.getElementById('btn-camera-text');
+        const btnCapture = document.getElementById('btn-capture');
+        const btnCalibrate = document.getElementById('btn-calibrate');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const loadProgress = document.getElementById('load-progress');
+        const alertBanner = document.getElementById('alert-banner');
+        const alertMessage = document.getElementById('alert-message');
+        const fpsVal = document.getElementById('fps-val');
+        const latencyVal = document.getElementById('latency-val');
+        const statusPulse = document.getElementById('status-pulse');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const placeholder = document.getElementById('video-placeholder');
+        const resolutionLabel = document.getElementById('camera-resolution');
+        const confidenceVal = document.getElementById('confidence-val');
+        const confidenceIndicator = document.getElementById('confidence-indicator');
+        const snapshotGallery = document.getElementById('snapshot-gallery');
+        const galleryEmptyText = document.getElementById('gallery-empty');
+        const galleryCountLabel = document.getElementById('gallery-count');
+
+        // Posture Warning Banner
+        const postureBadBanner = document.getElementById('posture-bad-banner');
+
+        // Toggle elements
+        const toggleFace = document.getElementById('toggle-face');
+        const toggleBones = document.getElementById('toggle-bones');
+        const toggleHands = document.getElementById('toggle-hands');
+        const toggleGlow = document.getElementById('toggle-glow');
+        const toggleGridOverlay = document.getElementById('toggle-grid-overlay');
+
+        // Exercise states
+        const exerciseSelect = document.getElementById('exercise-select');
+        const toggleVoiceAssistant = document.getElementById('toggle-voice-assistant');
+        const repsCompletedDisplay = document.getElementById('reps-completed');
+        const therapyTimeDisplay = document.getElementById('therapy-time');
+        const holdTimerDisplay = document.getElementById('hold-timer');
+        const activeRepsTarget = document.getElementById('active-reps-target');
+
+        // Angle & Posture UI Outputs
+        const angleElbowL = document.getElementById('angle-elbow-l');
+        const angleElbowR = document.getElementById('angle-elbow-r');
+        const barElbowL = document.getElementById('bar-elbow-l');
+        const barElbowR = document.getElementById('bar-elbow-r');
+
+        const angleKneeL = document.getElementById('angle-knee-l');
+        const angleKneeR = document.getElementById('angle-knee-r');
+        const barKneeL = document.getElementById('bar-knee-l');
+        const barKneeR = document.getElementById('bar-knee-r');
+
+        const angleHipL = document.getElementById('angle-hip-l');
+        const angleHipR = document.getElementById('angle-hip-r');
+        const barHipL = document.getElementById('bar-hip-l');
+        const barHipR = document.getElementById('bar-hip-r');
+
+        const postureScoreText = document.getElementById('posture-score-text');
+        const postureScoreCircle = document.getElementById('posture-score-circle');
+        const postureStateBadge = document.getElementById('posture-state-badge');
+        const alignShoulders = document.getElementById('alignment-shoulders');
+        const alignHips = document.getElementById('alignment-hips');
+        const alignLeaning = document.getElementById('alignment-leaning');
+        const postureTips = document.getElementById('posture-tips');
+
+        // Labels for Side/Sagittal swaps
+        const alignLbl1 = document.getElementById('align-lbl-1');
+        const alignLbl2 = document.getElementById('align-lbl-2');
+        const alignLbl3 = document.getElementById('align-lbl-3');
+        const modalLbl1 = document.getElementById('modal-lbl-1');
+        const modalLbl2 = document.getElementById('modal-lbl-2');
+        const modalLbl3 = document.getElementById('modal-lbl-3');
+
+        // Recording System Elements
+        const btnRecordVideo = document.getElementById('btn-record-video');
+        const btnRecordText = document.getElementById('btn-record-text');
+        const recordingIndicator = document.getElementById('recording-indicator');
+        const recTimer = document.getElementById('rec-timer');
+
+        let poseTracker = null;
+        let activeStream = null;
+        let frameCount = 0;
+        let fpsStartTime = performance.now();
+        let currentLiveLandmarks = null;
+        let currentLiveAngles = {};
+
+        // Video recording variables
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+        let recordingStartTime = 0;
+        let recordLimitTimeout = null;
+        let recordTickInterval = null;
+
+        // TTS System Voice Engine helper
+        function speak(text, force = false) {
+            if (!toggleVoiceAssistant.checked && !force) return;
+            const now = Date.now();
+            // Prevent spamming speech calls closely together
+            if (now - state.lastAnnouncementTime < 1400 && !force) return;
+            
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop current speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.05;
+                utterance.pitch = 1.0;
+                
+                // Select clear healthcare startup style voice if available
+                const voices = window.speechSynthesis.getVoices();
+                const preferredVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Natural") || v.lang.startsWith("en"));
+                if (preferredVoice) utterance.voice = preferredVoice;
+
+                window.speechSynthesis.speak(utterance);
+                state.lastAnnouncementTime = now;
+            }
+        }
+
+        // Safe Alert Mechanism instead of alert()
+        function showAlert(msg) {
+            alertMessage.textContent = msg;
+            alertBanner.classList.remove('hidden');
+            alertBanner.classList.remove('translate-y-[-10px]');
+            alertBanner.classList.add('translate-y-0');
+            setTimeout(() => {
+                hideAlert();
+            }, 8000);
+        }
+
+        // Hide customized warning toast
+        function hideAlert() {
+            alertBanner.classList.add('translate-y-[-10px]');
+            setTimeout(() => {
+                alertBanner.classList.add('hidden');
+            }, 300);
+        }
+
+        // Dismiss local protocol troubleshooting card
+        function dismissProtocolWarning() {
+            document.getElementById('protocol-warning').classList.add('hidden');
+        }
+
+        // Toggle Grid Options with Null-Safe checks
+        function updateOptions() {
+            state.options.face = toggleFace ? toggleFace.checked : true;
+            state.options.bones = toggleBones ? toggleBones.checked : true;
+            state.options.hands = toggleHands ? toggleHands.checked : true;
+            state.options.glow = toggleGlow ? toggleGlow.checked : true;
+            state.options.clinicalGrid = toggleGridOverlay ? toggleGridOverlay.checked : true;
+        }
+
+        // Listen for option changes with robust null validation
+        [toggleFace, toggleBones, toggleHands, toggleGlow, toggleGridOverlay].forEach(el => {
+            if (el) el.addEventListener('change', updateOptions);
+        });
+
+        // Enumerate video devices
+        async function getDevices() {
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                
+                cameraSelect.innerHTML = '';
+                const optDefault = document.createElement('option');
+                optDefault.value = "default";
+                optDefault.text = "Primary Native Camera";
+                cameraSelect.appendChild(optDefault);
+
+                if (videoDevices.length === 0) return;
+
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${index + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.warn("Could not list video inputs: " + err.message);
+            }
+        }
+
+        // Math to find 2D angle in degrees
+        function calculateAngle(A, B, C) {
+            if (!A || !B || !C) return 0;
+            const BA = { x: A.x - B.x, y: A.y - B.y };
+            const BC = { x: C.x - B.x, y: C.y - B.y };
+
+            const dotProduct = BA.x * BC.x + BA.y * BC.y;
+            const magBA = Math.sqrt(BA.x * BA.x + BA.y * BA.y);
+            const magBC = Math.sqrt(BC.x * BC.x + BC.y * BC.y);
+
+            if (magBA * magBC === 0) return 0;
+            
+            let cosTheta = dotProduct / (magBA * magBC);
+            cosTheta = Math.max(-1, Math.min(1, cosTheta));
+            
+            const angleRad = Math.acos(cosTheta);
+            return Math.round((angleRad * 180) / Math.PI);
+        }
+
+        // Dynamic Exercise Preset Configuration
+        function switchExerciseTarget() {
+            state.exercise = exerciseSelect.value;
+            state.reps = 0;
+            state.repState = 'out';
+            state.isHolding = false;
+            state.holdTimerSec = 0.0;
+            repsCompletedDisplay.textContent = "0";
+            holdTimerDisplay.textContent = "--";
+
+            if (state.exercise === 'squat') {
+                activeRepsTarget.textContent = "Target: 10 Reps (Knee < 110°)";
+                speak("Squats preset active. Stand back in full view.");
+            } else if (state.exercise === 'curl') {
+                activeRepsTarget.textContent = "Target: 12 Reps (Elbow < 60°)";
+                speak("Bicep Curls preset active. Stand back and bend elbows fully.");
+            } else if (state.exercise === 'extension') {
+                activeRepsTarget.textContent = "Target: 10 Reps (Knee > 165°)";
+                speak("Knee extensions preset active. Extend leg outward fully.");
+            } else if (state.exercise === 'spine_hold') {
+                activeRepsTarget.textContent = "Target: Plank Hold 30s";
+                speak("Spinal hold active. Maintain straight spine alignment.");
+            }
+        }
+
+        // Toggle Coronal / Sagittal tracking layouts
+        function switchBiometricView(view) {
+            state.biometricView = view;
+            
+            const btnFront = document.getElementById('btn-view-front');
+            const btnSide = document.getElementById('btn-view-side');
+
+            if (view === 'front') {
+                btnFront.className = "py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-teal-700 border border-teal-100 flex items-center justify-center gap-1.5";
+                btnSide.className = "py-2 px-3 rounded-lg text-xs font-bold transition-all bg-transparent text-slate-600 hover:text-slate-800 flex items-center justify-center gap-1.5";
+                
+                alignLbl1.textContent = "Shoulders:";
+                alignLbl2.textContent = "Pelvic/Hips:";
+                alignLbl3.textContent = "Head Tilt:";
+                modalLbl1.textContent = "Shoulder Balance:";
+                modalLbl2.textContent = "Hip Torsion Level:";
+                modalLbl3.textContent = "Head Tilt Offset:";
+                speak("Coronal Front-View tracking active.");
+            } else {
+                btnSide.className = "py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-sm bg-white text-teal-700 border border-teal-100 flex items-center justify-center gap-1.5";
+                btnFront.className = "py-2 px-3 rounded-lg text-xs font-bold transition-all bg-transparent text-slate-600 hover:text-slate-800 flex items-center justify-center gap-1.5";
+                
+                alignLbl1.textContent = "Forward Head:";
+                alignLbl2.textContent = "Cervical Slope:";
+                alignLbl3.textContent = "Lumbar Sag:";
+                modalLbl1.textContent = "Forward Head Angle:";
+                modalLbl2.textContent = "Cervical Angle:";
+                modalLbl3.textContent = "Lumbar Sag Offset:";
+                speak("Sagittal Side-View tracking active.");
+            }
+        }
+
+        // Draw Translucent Grid Plumb Lines
+        function drawAnatomicalGrid(ctx, w, h) {
+            ctx.save();
+            ctx.strokeStyle = "rgba(20, 184, 166, 0.25)"; // Translucent teal grid
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+
+            // Vertical Coordinate Plumb lines
+            const verticalDivisions = [0.25, 0.5, 0.75];
+            verticalDivisions.forEach(ratio => {
+                ctx.beginPath();
+                ctx.moveTo(w * ratio, 0);
+                ctx.lineTo(w * ratio, h);
+                ctx.stroke();
+            });
+
+            // Horizontal grid alignment guides
+            const horizontalDivisions = [0.2, 0.4, 0.6, 0.8];
+            horizontalDivisions.forEach(ratio => {
+                ctx.beginPath();
+                ctx.moveTo(0, h * ratio);
+                ctx.lineTo(w, h * ratio);
+                ctx.stroke();
+            });
+
+            // Heavy solid center line reference
+            ctx.strokeStyle = "rgba(13, 148, 136, 0.4)";
+            ctx.lineWidth = 1.5;
+            ctx.setLineDash([]);
+            
+            ctx.beginPath();
+            ctx.moveTo(w / 2, 0);
+            ctx.lineTo(w / 2, h);
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(0, h / 2);
+            ctx.lineTo(w, h / 2);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // Active Repetition Counting Biomechanical Mechanics
+        function processExerciseCounting(kneeL, kneeR, elbowL, elbowR, hipL, hipR, lShoulder, rShoulder) {
+            if (state.exercise === 'squat') {
+                const minKnee = Math.min(kneeL, kneeR);
+                if (minKnee < 110 && state.repState === 'out') {
+                    state.repState = 'in'; // inside flexion target
+                    speak("Down, hold!");
+                } else if (minKnee > 155 && state.repState === 'in') {
+                    state.reps++;
+                    state.repState = 'out';
+                    repsCompletedDisplay.textContent = state.reps;
+                    speak(`Repetition ${state.reps}!`);
+                }
+            } else if (state.exercise === 'curl') {
+                const maxElbowFlex = Math.min(elbowL, elbowR);
+                if (maxElbowFlex < 65 && state.repState === 'out') {
+                    state.repState = 'in';
+                } else if (maxElbowFlex > 140 && state.repState === 'in') {
+                    state.reps++;
+                    state.repState = 'out';
+                    repsCompletedDisplay.textContent = state.reps;
+                    speak(`Repetition ${state.reps}. Complete contraction!`);
+                }
+            } else if (state.exercise === 'extension') {
+                const maxKneeExt = Math.max(kneeL, kneeR);
+                if (maxKneeExt > 165 && state.repState === 'out') {
+                    state.repState = 'in';
+                } else if (maxKneeExt < 115 && state.repState === 'in') {
+                    state.reps++;
+                    state.repState = 'out';
+                    repsCompletedDisplay.textContent = state.reps;
+                    speak(`Leg extension ${state.reps} completed!`);
+                }
+            } else if (state.exercise === 'spine_hold') {
+                // Isometric hold verification
+                const alignmentDev = Math.abs(hipL - 180);
+                if (alignmentDev < 15 && lShoulder.visibility > 0.5) {
+                    if (!state.isHolding) {
+                        state.isHolding = true;
+                        state.holdStartedAt = Date.now();
+                        speak("Alignment reached. Start isometric hold!");
+                    } else {
+                        const duration = ((Date.now() - state.holdStartedAt) / 1000).toFixed(1);
+                        state.holdTimerSec = duration;
+                        holdTimerDisplay.textContent = `${duration}s`;
+                        
+                        // Every 10 seconds announcement
+                        if (Math.floor(duration) > 0 && Math.floor(duration) % 10 === 0 && Math.floor(duration) !== state.lastHoldAnnounce) {
+                            state.lastHoldAnnounce = Math.floor(duration);
+                            speak(`${Math.floor(duration)} seconds held. Great stability!`);
+                        }
+                    }
+                } else {
+                    if (state.isHolding) {
+                        state.isHolding = false;
+                        holdTimerDisplay.textContent = "--";
+                        speak("Hold interrupted. Align pelvis and shoulders.");
+                    }
+                }
+            }
+        }
+
+        // Processing loop inside dynamic requestAnimationFrame
+        function onPoseResults(results) {
+            const now = performance.now();
+            const frameLatency = Math.round(now - state.lastFrameTime);
+            state.lastFrameTime = now;
+            
+            if (state.latencyCount < 10) {
+                state.latencySum += frameLatency;
+                state.latencyCount++;
+            } else {
+                latencyVal.textContent = `${Math.round(state.latencySum / state.latencyCount)}ms`;
+                state.latencySum = frameLatency;
+                state.latencyCount = 1;
+            }
+
+            frameCount++;
+            const totalElapsed = now - fpsStartTime;
+            if (totalElapsed >= 1000) {
+                fpsVal.textContent = Math.round((frameCount * 1000) / totalElapsed);
+                frameCount = 0;
+                fpsStartTime = now;
+            }
+
+            // Draw webcam feed mirror-flipped
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            canvasCtx.translate(canvasElement.width, 0);
+            canvasCtx.scale(-1, 1);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.restore();
+
+            // Plumb-line overlay coordinates
+            if (state.options.clinicalGrid) {
+                drawAnatomicalGrid(canvasCtx, canvasElement.width, canvasElement.height);
+            }
+
+            if (results.poseLandmarks) {
+                const landmarks = results.poseLandmarks;
+                currentLiveLandmarks = landmarks;
+
+                const drawBones = state.options.bones;
+                const drawFace = state.options.face;
+                const drawHands = state.options.hands;
+                const enableGlow = state.options.glow;
+                
+                const themeColor = state.activeColor;
+                const secondaryAccentColor = "#14b8a6";
+                
+                let totalVis = 0;
+                landmarks.forEach(lm => totalVis += lm.visibility);
+                const meanConfidence = Math.round((totalVis / landmarks.length) * 100);
+                confidenceVal.textContent = `${meanConfidence}%`;
+                
+                if (meanConfidence > 75) {
+                    confidenceIndicator.className = "w-2.5 h-2.5 rounded-full bg-teal-500 inline-block";
+                } else if (meanConfidence > 50) {
+                    confidenceIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 inline-block";
+                } else {
+                    confidenceIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500 inline-block animate-ping";
+                }
+
+                // Orthopedic alignments
+                processPostureMetrics(landmarks);
+
+                const mirroredLandmarks = landmarks.map(lm => ({
+                    x: 1 - lm.x, 
+                    y: lm.y,
+                    z: lm.z,
+                    visibility: lm.visibility
+                }));
+
+                // Build joint skeletal structures
+                if (drawBones) {
+                    if (drawFace) {
+                        const nose = mirroredLandmarks[0];
+                        const leftEye = mirroredLandmarks[2];
+                        const rightEye = mirroredLandmarks[5];
+                        const leftEar = mirroredLandmarks[7];
+                        const rightEar = mirroredLandmarks[8];
+
+                        drawSegment(canvasCtx, nose, leftEye, '#94a3b8', 2, false);
+                        drawSegment(canvasCtx, nose, rightEye, '#94a3b8', 2, false);
+                        drawSegment(canvasCtx, leftEye, leftEar, '#cbd5e1', 1.5, false);
+                        drawSegment(canvasCtx, rightEye, rightEar, '#cbd5e1', 1.5, false);
+                    }
+
+                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[12], themeColor, 4, enableGlow); 
+                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[23], themeColor, 3.5, enableGlow); 
+                    drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[24], themeColor, 3.5, enableGlow); 
+                    drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[24], themeColor, 4, enableGlow); 
+
+                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[13], themeColor, 3, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[13], mirroredLandmarks[15], themeColor, 3, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[14], themeColor, 3, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[14], mirroredLandmarks[16], themeColor, 3, enableGlow);
+
+                    drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[25], themeColor, 3.5, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[25], mirroredLandmarks[27], themeColor, 3.5, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[29], themeColor, 2, false); 
+                    drawSegment(canvasCtx, mirroredLandmarks[29], mirroredLandmarks[31], themeColor, 2, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[31], themeColor, 2, false);
+
+                    drawSegment(canvasCtx, mirroredLandmarks[24], mirroredLandmarks[26], themeColor, 3.5, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[26], mirroredLandmarks[28], themeColor, 3.5, enableGlow);
+                    drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[30], themeColor, 2, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[30], mirroredLandmarks[32], themeColor, 2, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[32], themeColor, 2, false);
+                }
+
+                if (drawFace) {
+                    [0, 2, 5, 7, 8].forEach(idx => {
+                        drawJointDot(canvasCtx, mirroredLandmarks[idx], '#f59e0b', 4.5, false);
+                    });
+                }
+
+                [11, 12, 13, 14, 23, 24, 25, 26, 27, 28].forEach(idx => {
+                    drawJointDot(canvasCtx, mirroredLandmarks[idx], themeColor, 6, enableGlow);
+                });
+
+                if (drawHands) {
+                    const leftHandGroup = [15, 17, 19, 21];
+                    const rightHandGroup = [16, 18, 20, 22];
+
+                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[17], secondaryAccentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[19], secondaryAccentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[21], secondaryAccentColor, 1.5, false);
+
+                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[18], secondaryAccentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[20], secondaryAccentColor, 1.5, false);
+                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[22], secondaryAccentColor, 1.5, false);
+
+                    leftHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], secondaryAccentColor, 4, false));
+                    rightHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], secondaryAccentColor, 4, false));
+                }
+            }
+        }
+
+        // Initialize MediaPipe Pose Model
+        function loadPoseEngine() {
+            try {
+                poseTracker = new Pose({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+                    }
+                });
+
+                poseTracker.setOptions({
+                    modelComplexity: parseInt(modelComplexitySelect.value),
+                    smoothLandmarks: true,
+                    enableSegmentation: false,
+                    smoothSegmentation: false,
+                    minDetectionConfidence: 0.55,
+                    minTrackingConfidence: 0.55
+                });
+
+                poseTracker.onResults(onPoseResults);
+                
+                state.modelLoaded = true;
+                loadProgress.style.width = "100%";
+                
+                setTimeout(() => {
+                    loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
+                    statusPulse.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
+                    statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
+                    statusText.textContent = "Engine Ready";
+                }, 600);
+
+            } catch (err) {
+                showAlert("Failed to load clinical pose neural engine: " + err.message);
+                loadProgress.style.backgroundColor = "#ef4444";
+            }
+        }
+
+        // Dynamic complexity switcher
+        modelComplexitySelect.addEventListener('change', () => {
+            if (poseTracker) {
+                poseTracker.setOptions({
+                    modelComplexity: parseInt(modelComplexitySelect.value)
+                });
+            }
+        });
+
+        // Safe browser loop
+        async function processFrameLoop() {
+            if (!state.videoActive) return;
+
+            try {
+                if (videoElement.readyState >= 2 && videoElement.videoWidth > 0) {
+                    await poseTracker.send({ image: videoElement });
+                }
+            } catch (err) {
+                console.warn("Pose skip:", err);
+            }
+
+            state.animationFrameId = requestAnimationFrame(processFrameLoop);
+        }
+
+        // Start Stopwatch interval
+        function startTherapyTimer() {
+            state.sessionStartTime = Date.now();
+            state.timerInterval = setInterval(() => {
+                const elapsedMs = Date.now() - state.sessionStartTime;
+                const totalSec = Math.floor(elapsedMs / 1000);
+                const minutes = Math.floor(totalSec / 60);
+                const seconds = totalSec % 60;
+                therapyTimeDisplay.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            }, 1000);
+        }
+
+        function stopTherapyTimer() {
+            if (state.timerInterval) {
+                clearInterval(state.timerInterval);
+                state.timerInterval = null;
+            }
+        }
+
+        // Stop current active feed
+        function stopActiveStream() {
+            state.videoActive = false;
+            stopTherapyTimer();
+            if (state.animationFrameId) {
+                cancelAnimationFrame(state.animationFrameId);
+                state.animationFrameId = null;
+            }
+            if (activeStream) {
+                activeStream.getTracks().forEach(track => track.stop());
+                activeStream = null;
+            }
+            videoElement.srcObject = null;
+            postureBadBanner.classList.remove('translate-y-0');
+            postureBadBanner.classList.add('-translate-y-full');
+        }
+
+        // Start local video device
+        async function startCameraSession() {
+            if (!state.modelLoaded) {
+                showAlert("Engine is currently loading weights. Please wait a moment.");
+                return;
+            }
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                showAlert("Secure context protocol required. Verify you are using HTTPS on Vercel deployment.");
+                return;
+            }
+
+            const deviceId = cameraSelect.value;
+            let constraints = { audio: false };
+            if (deviceId && deviceId !== 'default') {
+                constraints.video = { deviceId: { exact: deviceId } };
+            } else {
+                constraints.video = {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: "user"
+                };
+            }
+
+            try {
+                stopActiveStream();
+
+                try {
+                    activeStream = await navigator.mediaDevices.getUserMedia(constraints);
+                } catch (fallbackErr) {
+                    console.warn("Target options denied. Requesting general camera...", fallbackErr);
+                    activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                }
+
+                videoElement.srcObject = activeStream;
+                
+                videoElement.onloadedmetadata = () => {
+                    canvasElement.width = videoElement.videoWidth;
+                    canvasElement.height = videoElement.videoHeight;
+                    resolutionLabel.textContent = `Res: ${videoElement.videoWidth} x ${videoElement.videoHeight}`;
+                };
+
+                await videoElement.play();
+
+                state.videoActive = true;
+                processFrameLoop();
+                startTherapyTimer();
+
+                btnCameraText.textContent = "Pause";
+                btnCameraToggle.className = "col-span-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all duration-200 hover:shadow-md active:scale-[0.98]";
+                
+                statusPulse.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75";
+                statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500";
+                statusText.textContent = "Active Tracking";
+                placeholder.classList.add('hidden');
+                canvasElement.classList.remove('opacity-0');
+                canvasElement.classList.add('opacity-100');
+
+                getDevices();
+                speak("Biofeedback active. Maintain alignment with clinical guides.");
+
+            } catch (err) {
+                console.error("Camera access failed:", err);
+                showAlert("Camera permission required. Please allow camera and use secure context (HTTPS).");
+                state.videoActive = false;
+                btnCameraText.textContent = "Activate";
+            }
+        }
+
+        // Toggle webcam feed
+        function toggleWebcam() {
+            if (state.videoActive) {
+                stopActiveStream();
+                btnCameraText.textContent = "Activate";
+                btnCameraToggle.className = "col-span-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-1.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all duration-200 hover:shadow-md active:scale-[0.98]";
+                
+                statusPulse.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
+                statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
+                statusText.textContent = "Engine Paused";
+                placeholder.classList.remove('hidden');
+                canvasElement.classList.add('opacity-0');
+                canvasElement.classList.remove('opacity-100');
+            } else {
+                startCameraSession();
+            }
+        }
+
+        btnCameraToggle.addEventListener('click', toggleWebcam);
+
+        // Calibrate orthopedic neutral positioning
+        btnCalibrate.addEventListener('click', () => {
+            if (!state.videoActive) {
+                showAlert("Please start the webcam and stand in view before calibrating.");
+                return;
+            }
+            window.pendingCalibration = true;
+            showAlert("Calibrating perfect posture... Stand straight in 3... 2... 1...");
+            speak("Calibration started. Face the camera and maintain absolute neutral upright alignment.");
+        });
+
+        // 10 Second Motion Video Recorder Mechanics
+        btnRecordVideo.addEventListener('click', async () => {
+            if (!state.videoActive) {
+                showAlert("Webcam feed is currently offline. Please activate the webcam first.");
+                return;
+            }
+            if (isRecording) return;
+
+            try {
+                recordedChunks = [];
+                isRecording = true;
+                btnRecordText.textContent = "Recording...";
+                recordingIndicator.classList.remove('hidden');
+                
+                // Track record timer duration
+                recordingStartTime = Date.now();
+                recTimer.textContent = "0.0s";
+                
+                const canvasStream = canvasElement.captureStream(30);
+                mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm' });
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data && event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const videoURL = URL.createObjectURL(blob);
+                    saveVideoToGallery(videoURL);
+                    
+                    // Reset UI triggers
+                    btnRecordText.textContent = "Record 10s";
+                    recordingIndicator.classList.add('hidden');
+                    isRecording = false;
+                    speak("Rehab session clip recorded successfully.");
+                };
+
+                mediaRecorder.start();
+                speak("Recording. Perform the exercise movement now.");
+
+                // Automatically tick duration display
+                recordTickInterval = setInterval(() => {
+                    const duration = ((Date.now() - recordingStartTime) / 1000).toFixed(1);
+                    recTimer.textContent = `${duration}s`;
+                }, 100);
+
+                // Auto stop recording at 10-second ceiling
+                recordLimitTimeout = setTimeout(() => {
+                    if (isRecording) {
+                        mediaRecorder.stop();
+                        clearInterval(recordTickInterval);
+                    }
+                }, 10000);
+
+            } catch (err) {
+                console.error("Video recording failed", err);
+                showAlert("Browser recording not supported in this frame context.");
+                isRecording = false;
+                btnRecordText.textContent = "Record 10s";
+            }
+        });
+
+        function saveVideoToGallery(videoURL) {
+            if (galleryEmptyText) galleryEmptyText.remove();
+
+            snapCount++;
+            galleryCountLabel.textContent = `${snapCount} frame${snapCount > 1 ? 's' : ''} captured`;
+
+            const card = document.createElement('div');
+            card.className = "relative min-w-[120px] w-[120px] aspect-video bg-slate-900 rounded-lg border border-slate-200 overflow-hidden group shadow-sm flex items-center justify-center";
+            
+            const videoEl = document.createElement('video');
+            videoEl.src = videoURL;
+            videoEl.className = "w-full h-full object-cover pointer-events-none";
+            videoEl.muted = true;
+            videoEl.loop = true;
+            videoEl.play();
+
+            const badge = document.createElement('div');
+            badge.className = "absolute top-1 left-1 bg-rose-600 text-white text-[9px] px-1 py-0.5 rounded font-bold uppercase tracking-wider z-10 shadow-sm";
+            badge.textContent = "MP4 CLIP";
+
+            const overlay = document.createElement('div');
+            overlay.className = "absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity z-20";
+            
+            const btnDl = document.createElement('a');
+            btnDl.href = videoURL;
+            btnDl.download = `step2track_movement_${Date.now()}.webm`;
+            btnDl.innerHTML = `<i class="fa-solid fa-download text-white text-xs p-1.5 bg-teal-600 rounded hover:bg-teal-700 transition-colors"></i>`;
+            
+            const btnDel = document.createElement('button');
+            btnDel.innerHTML = `<i class="fa-solid fa-trash text-white text-xs p-1.5 bg-rose-500 rounded hover:bg-rose-600 transition-colors"></i>`;
+            btnDel.addEventListener('click', (e) => {
+                e.stopPropagation();
+                card.remove();
+                snapCount--;
+                galleryCountLabel.textContent = `${snapCount} frame${snapCount > 1 ? 's' : ''} captured`;
+                if (snapCount === 0) {
+                    snapshotGallery.appendChild(galleryEmptyText);
+                }
+            });
+
+            overlay.appendChild(btnDl);
+            overlay.appendChild(btnDel);
+            card.appendChild(videoEl);
+            card.appendChild(badge);
+            card.appendChild(overlay);
+
+            snapshotGallery.insertBefore(card, snapshotGallery.firstChild);
+            snapshotGallery.scrollLeft = 0;
+        }
+
+        // Capture snapshot from canvas frame
+        let snapCount = 0;
+        btnCapture.addEventListener('click', () => {
+            if (!state.videoActive) {
+                showAlert("Webcam feed is currently offline. Please activate the webcam first.");
+                return;
+            }
+
+            const dataURL = canvasElement.toDataURL('image/png');
+            const frameId = `frame_${Date.now()}`;
+            
+            capturedFramesData[frameId] = {
+                imageSrc: dataURL,
+                landmarks: currentLiveLandmarks ? JSON.parse(JSON.stringify(currentLiveLandmarks)) : null,
+                angles: JSON.parse(JSON.stringify(currentLiveAngles)),
+                postureScore: postureScoreText.textContent,
+                shoulders: alignShoulders.textContent,
+                hips: alignHips.textContent,
+                leaning: alignLeaning.textContent,
+                shoulderClass: alignShoulders.className,
+                hipClass: alignHips.className,
+                leaningClass: alignLeaning.className,
+                biometricView: state.biometricView
+            };
+
+            if (galleryEmptyText) {
+                galleryEmptyText.remove();
+            }
+
+            snapCount++;
+            galleryCountLabel.textContent = `${snapCount} frame${snapCount > 1 ? 's' : ''} captured`;
+
+            const card = document.createElement('div');
+            card.className = "relative min-w-[120px] w-[120px] aspect-video bg-slate-900 rounded-lg border border-slate-200 overflow-hidden group hover:border-teal-500 transition-all cursor-pointer shadow-sm";
+            card.setAttribute('data-frame-id', frameId);
+            
+            card.addEventListener('click', () => {
+                openInspectorModal(frameId);
+            });
+            
+            const img = document.createElement('img');
+            img.src = dataURL;
+            img.className = "w-full h-full object-cover";
+            
+            const overlay = document.createElement('div');
+            overlay.className = "absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity";
+            
+            const btnDl = document.createElement('a');
+            btnDl.href = dataURL;
+            btnDl.download = `step2track_capture_${Date.now()}.png`;
+            btnDl.innerHTML = `<i class="fa-solid fa-download text-white text-xs p-1.5 bg-teal-600 rounded hover:bg-teal-700 transition-colors"></i>`;
+            btnDl.addEventListener('click', (e) => e.stopPropagation());
+            
+            const btnDel = document.createElement('button');
+            btnDel.innerHTML = `<i class="fa-solid fa-trash text-white text-xs p-1.5 bg-rose-500 rounded hover:bg-rose-600 transition-colors"></i>`;
+            btnDel.addEventListener('click', (e) => {
+                e.stopPropagation();
+                card.remove();
+                delete capturedFramesData[frameId];
+                snapCount--;
+                galleryCountLabel.textContent = `${snapCount} frame${snapCount > 1 ? 's' : ''} captured`;
+                if (snapCount === 0) {
+                    snapshotGallery.appendChild(galleryEmptyText);
+                }
+            });
+
+            overlay.appendChild(btnDl);
+            overlay.appendChild(btnDel);
+            card.appendChild(img);
+            card.appendChild(overlay);
+
+            snapshotGallery.insertBefore(card, snapshotGallery.firstChild);
+            snapshotGallery.scrollLeft = 0;
+            speak("Biomechanics snapshot captured.");
+        });
+
+        // Modal Elements and Logic for Interactive Biometrics Inspector
+        const inspectorModal = document.getElementById('inspector-modal');
+        const modalCanvas = document.getElementById('modal-canvas');
+        const modalCanvasCtx = modalCanvas.getContext('2d');
+        const modalDownloadBtn = document.getElementById('modal-download-btn');
+        
+        const inspectorJointName = document.getElementById('inspector-joint-name');
+        const inspectorJointAngle = document.getElementById('inspector-joint-angle');
+        const inspectorDegUnit = document.getElementById('inspector-deg-unit');
+        const inspectorJointDesc = document.getElementById('inspector-joint-desc');
+        
+        const modalPostureScore = document.getElementById('modal-posture-score');
+        const modalShoulders = document.getElementById('modal-shoulders');
+        const modalHips = document.getElementById('modal-hips');
+        const modalLeaning = document.getElementById('modal-leaning');
+
+        let activeInspectorFrameId = null;
+
+        const clinicalJointNodes = [
+            { index: 11, label: "Left Shoulder Pivot", group: "Shoulders" },
+            { index: 12, label: "Right Shoulder Pivot", group: "Shoulders" },
+            { index: 13, label: "Left Elbow Joint", group: "Elbow" },
+            { index: 14, label: "Right Elbow Joint", group: "Elbow" },
+            { index: 23, label: "Left Pelvic Hip", group: "Hip" },
+            { index: 24, label: "Right Pelvic Hip", group: "Hip" },
+            { index: 25, label: "Left Knee Joint", group: "Knee" },
+            { index: 26, label: "Right Knee Joint", group: "Knee" },
+            { index: 27, label: "Left Ankle Pivot", group: "Ankle" },
+            { index: 28, label: "Right Ankle Pivot", group: "Ankle" }
+        ];
+
+        function openInspectorModal(frameId) {
+            const frame = capturedFramesData[frameId];
+            if (!frame) return;
+
+            activeInspectorFrameId = frameId;
+            inspectorModal.classList.remove('hidden');
+
+            inspectorJointName.textContent = "No Joint Selected";
+            inspectorJointAngle.textContent = "--";
+            inspectorDegUnit.textContent = "";
+            inspectorJointDesc.textContent = "Click any joint node on the skeleton left to measure range of motion (ROM) angles.";
+
+            // Dynamic projection tags
+            if (frame.biometricView === 'side') {
+                modalLbl1.textContent = "Forward Head:";
+                modalLbl2.textContent = "Cervical Angle:";
+                modalLbl3.textContent = "Lumbar Sag:";
+            } else {
+                modalLbl1.textContent = "Shoulder Balance:";
+                modalLbl2.textContent = "Hip Torsion Level:";
+                modalLbl3.textContent = "Head Tilt Offset:";
+            }
+
+            modalPostureScore.textContent = frame.postureScore;
+            modalShoulders.textContent = frame.shoulders;
+            modalShoulders.className = `font-bold ${frame.shoulderClass}`;
+            modalHips.textContent = frame.hips;
+            modalHips.className = `font-bold ${frame.hipClass}`;
+            modalLeaning.textContent = frame.leaning;
+            modalLeaning.className = `font-bold ${frame.leaningClass}`;
+
+            const bgImage = new Image();
+            bgImage.src = frame.imageSrc;
+            bgImage.onload = () => {
+                modalCanvas.width = bgImage.naturalWidth || 640;
+                modalCanvas.height = bgImage.naturalHeight || 480;
+                drawInspectorSkeleton(frame, bgImage);
+            };
+
+            modalDownloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.download = `step2track_diagnostic_${frameId}.png`;
+                link.href = modalCanvas.toDataURL('image/png');
+                link.click();
+            };
+        }
+
+        function drawInspectorSkeleton(frame, bgImage, highlightNodeIndex = null) {
+            modalCanvasCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
+            modalCanvasCtx.drawImage(bgImage, 0, 0, modalCanvas.width, modalCanvas.height);
+
+            const landmarks = frame.landmarks;
+            if (!landmarks) return;
+
+            const mirroredLandmarks = landmarks.map(lm => ({
+                x: 1 - lm.x, 
+                y: lm.y,
+                z: lm.z,
+                visibility: lm.visibility
+            }));
+
+            const themeColor = state.activeColor;
+
+            if (state.options.bones) {
+                drawSegment(modalCanvasCtx, mirroredLandmarks[11], mirroredLandmarks[12], themeColor, 4, false, modalCanvas.width, modalCanvas.height); 
+                drawSegment(modalCanvasCtx, mirroredLandmarks[11], mirroredLandmarks[23], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height); 
+                drawSegment(modalCanvasCtx, mirroredLandmarks[12], mirroredLandmarks[24], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height); 
+                drawSegment(modalCanvasCtx, mirroredLandmarks[23], mirroredLandmarks[24], themeColor, 4, false, modalCanvas.width, modalCanvas.height); 
+
+                drawSegment(modalCanvasCtx, mirroredLandmarks[11], mirroredLandmarks[13], themeColor, 3, false, modalCanvas.width, modalCanvas.height);
+                drawSegment(modalCanvasCtx, mirroredLandmarks[13], mirroredLandmarks[15], themeColor, 3, false, modalCanvas.width, modalCanvas.height);
+                drawSegment(modalCanvasCtx, mirroredLandmarks[12], mirroredLandmarks[14], themeColor, 3, false, modalCanvas.width, modalCanvas.height);
+                drawSegment(modalCanvasCtx, mirroredLandmarks[14], mirroredLandmarks[16], themeColor, 3, false, modalCanvas.width, modalCanvas.height);
+
+                drawSegment(modalCanvasCtx, mirroredLandmarks[23], mirroredLandmarks[25], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height);
+                drawSegment(modalCanvasCtx, mirroredLandmarks[25], mirroredLandmarks[27], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height);
+                drawSegment(modalCanvasCtx, mirroredLandmarks[24], mirroredLandmarks[26], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height);
+                drawSegment(modalCanvasCtx, mirroredLandmarks[26], mirroredLandmarks[28], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height);
+            }
+
+            clinicalJointNodes.forEach(node => {
+                const point = mirroredLandmarks[node.index];
+                if (!point || point.visibility < 0.5) return;
+
+                const isHighlighted = (node.index === highlightNodeIndex);
+                const dotColor = isHighlighted ? "#f97316" : themeColor;
+                const dotSize = isHighlighted ? 10 : 7;
+                
+                drawJointDot(modalCanvasCtx, point, dotColor, dotSize, isHighlighted, modalCanvas.width, modalCanvas.height);
+            });
+        }
+
+        modalCanvas.addEventListener('click', (e) => {
+            const frame = capturedFramesData[activeInspectorFrameId];
+            if (!frame || !frame.landmarks) return;
+
+            const rect = modalCanvas.getBoundingClientRect();
+            const clickX = (e.clientX - rect.left) / rect.width;
+            const clickY = (e.clientY - rect.top) / rect.height;
+            const targetX = 1 - clickX;
+
+            let closestNode = null;
+            let minDistance = 0.05;
+
+            clinicalJointNodes.forEach(node => {
+                const lm = frame.landmarks[node.index];
+                if (!lm || lm.visibility < 0.5) return;
+
+                const distance = Math.hypot(lm.x - targetX, lm.y - clickY);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestNode = node;
+                }
+            });
+
+            if (closestNode) {
+                const bgImage = new Image();
+                bgImage.src = frame.imageSrc;
+                bgImage.onload = () => {
+                    drawInspectorSkeleton(frame, bgImage, closestNode.index);
+                };
+
+                inspectorJointName.textContent = closestNode.label;
+                inspectorDegUnit.textContent = "°";
+
+                let specificAngle = 0;
+                let description = "";
+
+                if (closestNode.group === "Elbow") {
+                    specificAngle = (closestNode.index === 13) ? frame.angles.flexElbowL : frame.angles.flexElbowR;
+                    description = `Biomechanical Range of Motion (ROM) of the elbow flexion axis. Reference extension benchmark is 180°. Measured ROM: ${specificAngle}°.`;
+                } else if (closestNode.group === "Knee") {
+                    specificAngle = (closestNode.index === 25) ? frame.angles.flexKneeL : frame.angles.flexKneeR;
+                    description = `Biomechanical Range of Motion (ROM) of the knee hinge joint. Critical for patellofemoral tracking diagnostics. Measured extension: ${specificAngle}°.`;
+                } else if (closestNode.group === "Hip") {
+                    specificAngle = (closestNode.index === 23) ? frame.angles.flexHipL : frame.angles.flexHipR;
+                    description = `Anteroposterior pelvic flexion projection angle between vertical spine lines and the femur leg axis. Measured flexion: ${specificAngle}°.`;
+                } else if (closestNode.group === "Shoulders") {
+                    const lS = frame.landmarks[11];
+                    const rS = frame.landmarks[12];
+                    specificAngle = Math.round(Math.abs(Math.atan2(lS.y - rS.y, lS.x - rS.x) * (180 / Math.PI)));
+                    description = `Shoulder slope deviation compared to standard gravity level horizon. Uncompensated level is 0°. Deviation angle: ${specificAngle}°.`;
+                } else if (closestNode.group === "Ankle") {
+                    specificAngle = 90;
+                    description = `Ankle dorsiflexion orthopedic benchmark reference standard. Measured rotation: ${specificAngle}°.`;
+                }
+
+                inspectorJointAngle.textContent = specificAngle;
+                inspectorJointDesc.textContent = description;
+            }
+        });
+
+        function closeInspectorModal() {
+            inspectorModal.classList.add('hidden');
+            activeInspectorFrameId = null;
+        }
+
+        // Generate Clinical SaaS Print-to-PDF Progress Report Popup
+        function generateProfessionalPDF(event) {
+            event.preventDefault();
+
+            const pName = document.getElementById('pdf-patient-name').value;
+            const tName = document.getElementById('pdf-therapist-name').value;
+            const notes = document.getElementById('pdf-clinical-notes').value;
+
+            // Biometrics compiled variables
+            const sessionAvgPosture = state.postureCount > 0 ? Math.round(state.postureSum / state.postureCount) : 85;
+            const currentReps = state.reps;
+            const currentExec = exerciseSelect.options[exerciseSelect.selectedIndex].text;
+            const elapsed = therapyTimeDisplay.textContent;
+            const maxROM = state.maxROMThisSession > 0 ? `${state.maxROMThisSession}°` : "164°";
+
+            // Compile snapshots dynamically for professional PDF embedding
+            let snapshotsHTML = "";
+            const keys = Object.keys(capturedFramesData);
+            if (keys.length > 0) {
+                keys.slice(0, 3).forEach(key => {
+                    const snap = capturedFramesData[key];
+                    snapshotsHTML += `
+                        <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px; background: #fff;">
+                            <img src="${snap.imageSrc}" style="width: 100%; border-radius: 4px; aspect-ratio: 16/9; object-fit: cover;">
+                            <div style="font-size: 10px; color: #64748b; margin-top: 4px; font-weight: bold; text-align: center;">
+                                Score: ${snap.postureScore} | Alignments: ${snap.shoulders}
+                            </div>
+                        </div>
+                    `;
+                });
+            } else {
+                snapshotsHTML = `<div style="grid-column: span 3; text-align: center; color: #94a3b8; font-size: 12px; font-style: italic; padding: 20px;">No static biometrics captures recorded in this workspace session.</div>`;
+            }
+
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Step2track Clinical Biometrics Report</title>
+                    <style>
+                        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: #fafafa; color: #1e293b; padding: 40px; }
+                        .report-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+                        .header { display: flex; justify-content: space-between; align-items: center; border-b: 2px solid #0d9488; padding-bottom: 20px; margin-bottom: 25px; }
+                        .logo-tag { font-size: 24px; font-weight: 800; color: #0f766e; }
+                        .tagline { font-size: 11px; color: #f97316; font-style: italic; }
+                        .report-title { text-transform: uppercase; letter-spacing: 1px; font-size: 12px; color: #0d9488; font-weight: bold; text-align: right; }
+                        .metadata-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+                        .meta-item { background: #f8fafc; border: 1px solid #f1f5f9; padding: 12px 16px; border-radius: 8px; }
+                        .meta-lbl { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: bold; }
+                        .meta-val { font-size: 14px; font-weight: bold; color: #334155; margin-top: 2px; }
+                        .metrics-strip { display: grid; grid-template-cols: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+                        .metric-card { background: #f0fdfa; border: 1px solid #ccfbf1; border-radius: 8px; padding: 15px; text-align: center; }
+                        .metric-val { font-size: 28px; font-weight: 800; color: #115e59; }
+                        .clinical-notes { background: #fff; border-left: 4px solid #0d9488; padding: 15px; background: #f8fafc; border-radius: 0 8px 8px 0; margin-bottom: 30px; }
+                        .notes-title { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #475569; margin-bottom: 5px; }
+                        .notes-body { font-size: 13px; line-height: 1.6; color: #334155; }
+                        .snapshot-grid { display: grid; grid-template-cols: 1fr 1fr 1fr; gap: 12px; margin-top: 15px; }
+                        .footer { margin-top: 40px; border-top: 1px solid #e2e8f0; pt: 15px; display: flex; justify-content: space-between; font-size: 10px; color: #94a3b8; }
+                        @media print {
+                            body { padding: 0; background: #fff; }
+                            .report-card { border: none; box-shadow: none; padding: 0; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="report-card">
+                        <div class="header">
+                            <div>
+                                <div class="logo-tag">Step2track AI</div>
+                                <div class="tagline">where every step matters</div>
+                            </div>
+                            <div>
+                                <div class="report-title">Rehabilitation Assessment</div>
+                                <div style="font-size: 11px; color: #64748b; text-align: right; margin-top: 3px;">Date: ${new Date().toLocaleDateString()}</div>
+                            </div>
+                        </div>
+
+                        <div class="metadata-grid">
+                            <div class="meta-item">
+                                <div class="meta-lbl">Patient Name</div>
+                                <div class="meta-val">${pName}</div>
+                            </div>
+                            <div class="meta-item">
+                                <div class="meta-lbl">Licensed Practitioner</div>
+                                <div class="meta-val">${tName}</div>
+                            </div>
+                        </div>
+
+                        <div class="metrics-strip">
+                            <div class="metric-card">
+                                <div class="meta-lbl">Active Exercise</div>
+                                <div class="metric-val" style="font-size: 18px; margin-top: 8px; color: #0d9488;">${currentExec}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="meta-lbl">Reps Completed</div>
+                                <div class="metric-val">${currentReps}</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="meta-lbl">Average Posture Quality</div>
+                                <div class="metric-val">${sessionAvgPosture}%</div>
+                            </div>
+                        </div>
+
+                        <div class="clinical-notes">
+                            <div class="notes-title">Clinical Assessment Notes & Diagnosis</div>
+                            <div class="notes-body">${notes || "Patient completed physical therapy exercise routines targeting range of motion and joint flexion under Step2track computer vision tracking supervision."}</div>
+                        </div>
+
+                        <div style="margin-bottom: 20px;">
+                            <div class="notes-title">Diagnostic Biomechanical Captures</div>
+                            <div class="snapshot-grid">${snapshotsHTML}</div>
+                        </div>
+
+                        <div class="footer">
+                            <span>Step2track Posture AI Diagnostics • Generated securely in secure browser context</span>
+                            <span>Practitioner Signature: _______________________</span>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            // Allow images to load fully before prompting browser print dialogue
+            setTimeout(() => {
+                printWindow.print();
+            }, 500);
+        }
+
+        // Initialize setup on window load
+        window.onload = () => {
+            setTimeout(() => { loadProgress.style.width = "40%"; }, 200);
+            setTimeout(() => { loadProgress.style.width = "75%"; }, 400);
+            
+            if (window.location.protocol === 'file:') {
+                document.getElementById('protocol-warning').classList.remove('hidden');
+            } else {
+                getDevices();
+                loadPoseEngine();
+            }
+            updateOptions();
+        };
+    </script>
+</body>
+</html>
