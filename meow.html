@@ -51,3 +51,122 @@
     </script>
 </section>
 <!-- SECTION 1: HEADER END -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posture Assessment Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <section id="viewport-section" class="w-full max-w-3xl flex flex-col gap-4">
+        <!-- Viewport -->
+        <div class="relative rounded-2xl p-3 min-h-[480px] flex flex-col items-center justify-center bg-white border-4 border-teal-800 shadow-2xl overflow-hidden">
+            <div id="loading-overlay" class="absolute inset-0 bg-white flex flex-col items-center justify-center z-50 transition-opacity duration-500">
+                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-800 mb-4"></div>
+                <p id="loading-text" class="text-teal-800 font-mono text-sm">Working on it...</p>
+            </div>
+
+            <video id="input-video" class="hidden" playsinline muted></video>
+            <canvas id="output-canvas" class="w-full h-full object-contain z-10"></canvas>
+
+            <div id="error-panel" class="absolute inset-0 flex flex-col items-center justify-center p-6 bg-white hidden z-50">
+                <i class="fa-solid fa-triangle-exclamation text-rose-500 text-4xl mb-4"></i>
+                <p class="text-gray-800 text-sm text-center mb-4" id="error-message"></p>
+                <button onclick="window.location.reload()" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-bold">Reload/Retry</button>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white border border-gray-300 rounded-xl p-4 flex gap-6 text-gray-700 shadow-sm">
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="toggle-palm" checked class="accent-teal-700"> Palm Assessment
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="toggle-glow" checked class="accent-teal-700"> Glow Effect
+            </label>
+        </div>
+
+        <script>
+            (async function() {
+                const video = document.getElementById('input-video');
+                const canvas = document.getElementById('output-canvas');
+                const ctx = canvas.getContext('2d');
+                const togglePalm = document.getElementById('toggle-palm');
+                const toggleGlow = document.getElementById('toggle-glow');
+
+                const pose = new Pose({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+                });
+
+                pose.setOptions({ 
+                    modelComplexity: 2, 
+                    smoothLandmarks: true,
+                    enableSegmentation: false,
+                    minDetectionConfidence: 0.85,
+                    minTrackingConfidence: 0.85 
+                });
+
+                pose.onResults((results) => {
+                    document.getElementById('loading-overlay').style.display = 'none';
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+                    
+                    if (results.poseLandmarks) {
+                        // Keep visibility for all relevant landmarks, mask facial area (0-10)
+                        // If palm is OFF, mask fingers (17-22)
+                        const filteredLandmarks = results.poseLandmarks.map((lm, idx) => 
+                            (idx < 11 || (!togglePalm.checked && idx >= 17 && idx <= 22)) 
+                                ? { ...lm, visibility: 0 } 
+                                : { ...lm, visibility: 1 }
+                        );
+
+                        // Define full body connections
+                        let connections = POSE_CONNECTIONS;
+                        if (!togglePalm.checked) {
+                            connections = connections.filter(c => 
+                                !(c[0] >= 17 && c[0] <= 22) && !(c[1] >= 17 && c[1] <= 22)
+                            );
+                        }
+
+                        if (toggleGlow.checked) {
+                            ctx.shadowBlur = 8;
+                            ctx.shadowColor = '#0d9488';
+                        } else {
+                            ctx.shadowBlur = 0;
+                        }
+
+                        // Draw lines (Bones) with high contrast for clinical visibility
+                        drawConnectors(ctx, filteredLandmarks, connections, {color: '#0d9488', lineWidth: 5});
+                        
+                        // Draw dots (Joints)
+                        drawLandmarks(ctx, filteredLandmarks.filter((lm, i) => i >= 11 && (togglePalm.checked || i < 17)), {color: '#f97316', lineWidth: 2, radius: 5});
+                        
+                        ctx.shadowBlur = 0;
+                    }
+                });
+
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    video.play();
+                    const processFrame = async () => {
+                        await pose.send({image: video});
+                        requestAnimationFrame(processFrame);
+                    };
+                    processFrame();
+                };
+            })();
+        </script>
+    </section>
+</body>
+</html>
