@@ -1,10 +1,9 @@
-<!-- SECTION 1: HEADER START -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Posture Assessment Engine</title>
+    <title>Step2Track | Posture Assessment Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
@@ -12,35 +11,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
 </head>
-    <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
-<section id="header-section" role="banner">
-    <!-- Section-Specific Styles to ensure independence -->
-    <style>
-        #header-section {
-            background-color: #1e293b; /* Slate-800 */
-            color: #ffffff;
-            padding: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            width: 100%;
-        }
-        #header-section nav {
-            max-width: 1280px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-    </style>
+<body class="bg-gray-100 min-h-screen flex flex-col">
 
-    <header>
-        <nav aria-label="Main Navigation">
-            <!-- Logo and Branding -->
+    <!-- Header Section -->
+    <section id="header-section" role="banner" class="bg-slate-800 text-white p-4 shadow-md w-full">
+        <nav class="max-w-5xl mx-auto flex items-center justify-between" aria-label="Main Navigation">
             <div class="flex items-center gap-2">
-                <span class="text-xl font-bold text-teal-400" aria-label="Step2Track Logo">Step2Track</span>
+                <span class="text-xl font-bold text-teal-400">Step2Track</span>
                 <span class="hidden md:block text-sm text-gray-400">| Posture & Recovery Analyzer</span>
             </div>
-            
-            <!-- System Connection Status -->
             <div id="connection-status" class="flex items-center gap-2" role="status">
                 <span class="relative flex h-3 w-3">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
@@ -49,141 +28,107 @@
                 <span class="text-sm font-medium">System Online</span>
             </div>
         </nav>
-    </header>
+    </section>
+
+    <!-- Main Content Section -->
+    <main class="flex-grow flex items-center justify-center p-4">
+        <section id="viewport-section" class="w-full max-w-5xl flex flex-col gap-6">
+            <!-- Viewport -->
+            <div class="relative rounded-2xl p-4 min-h-[50vh] flex flex-col items-center justify-center bg-white border-4 border-teal-800 shadow-2xl overflow-hidden">
+                <div id="loading-overlay" class="absolute inset-0 bg-white flex flex-col items-center justify-center z-50">
+                    <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-800 mb-4"></div>
+                    <p class="text-teal-800 font-mono text-sm">Working on it...</p>
+                </div>
+
+                <video id="input-video" class="hidden" playsinline muted></video>
+                <canvas id="output-canvas" class="w-full h-full object-contain z-10"></canvas>
+
+                <div id="error-panel" class="absolute inset-0 flex flex-col items-center justify-center p-6 bg-white hidden z-50">
+                    <i class="fa-solid fa-triangle-exclamation text-rose-500 text-4xl mb-4"></i>
+                    <p class="text-gray-800 text-sm text-center mb-4" id="error-message"></p>
+                    <button onclick="window.location.reload()" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-bold">Reload/Retry</button>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="bg-white border border-gray-300 rounded-xl p-6 flex flex-wrap gap-6 text-gray-700 shadow-sm justify-center">
+                <label class="flex items-center gap-2 cursor-pointer text-lg">
+                    <input type="checkbox" id="toggle-palm" checked class="accent-teal-700 w-5 h-5"> Palm Assessment
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer text-lg">
+                    <input type="checkbox" id="toggle-glow" checked class="accent-teal-700 w-5 h-5"> Glow Effect
+                </label>
+            </div>
+        </section>
+    </main>
 
     <script>
-        (function() {
-            // Header-specific initialization logic
-            const initHeader = () => {
-                const statusEl = document.querySelector('#header-section #connection-status');
-                console.log("Header section initialized independently.");
-            };
-            
-            // Run logic
-            initHeader();
-        })();
-    </script>
-</section>
-<!-- SECTION 1: HEADER END -->
-<!-- SECTION 2: START -->
+        (async function() {
+            const video = document.getElementById('input-video');
+            const canvas = document.getElementById('output-canvas');
+            const ctx = canvas.getContext('2d');
+            const togglePalm = document.getElementById('toggle-palm');
+            const toggleGlow = document.getElementById('toggle-glow');
 
-   <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Posture Assessment Engine</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
-</head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+            const pose = new Pose({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+            });
 
-    <section id="viewport-section" class="w-full max-w-3xl flex flex-col gap-4">
-        <!-- Viewport -->
-        <div class="relative rounded-2xl p-3 min-h-[480px] flex flex-col items-center justify-center bg-white border-4 border-teal-800 shadow-2xl overflow-hidden">
-            <div id="loading-overlay" class="absolute inset-0 bg-white flex flex-col items-center justify-center z-50 transition-opacity duration-500">
-                <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-800 mb-4"></div>
-                <p id="loading-text" class="text-teal-800 font-mono text-sm">Working on it...</p>
-            </div>
+            pose.setOptions({ 
+                modelComplexity: 1, 
+                smoothLandmarks: true,
+                enableSegmentation: false,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6 
+            });
 
-            <video id="input-video" class="hidden" playsinline muted></video>
-            <canvas id="output-canvas" class="w-full h-full object-contain z-10"></canvas>
+            pose.onResults((results) => {
+                document.getElementById('loading-overlay').style.display = 'none';
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+                
+                if (results.poseLandmarks) {
+                    const VISIBILITY_THRESHOLD = 0.65;
+                    const filteredLandmarks = results.poseLandmarks.map((lm, idx) => 
+                        (idx < 11 || (!togglePalm.checked && idx >= 17 && idx <= 22)) 
+                            ? { ...lm, visibility: 0 } 
+                            : lm
+                    );
 
-            <div id="error-panel" class="absolute inset-0 flex flex-col items-center justify-center p-6 bg-white hidden z-50">
-                <i class="fa-solid fa-triangle-exclamation text-rose-500 text-4xl mb-4"></i>
-                <p class="text-gray-800 text-sm text-center mb-4" id="error-message"></p>
-                <button onclick="window.location.reload()" class="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-bold">Reload/Retry</button>
-            </div>
-        </div>
+                    const connections = POSE_CONNECTIONS.filter(c => {
+                        const start = filteredLandmarks[c[0]];
+                        const end = filteredLandmarks[c[1]];
+                        const isPalmConnection = (c[0] >= 17 || c[1] >= 17);
+                        if (!togglePalm.checked && isPalmConnection) return false;
+                        return start.visibility > VISIBILITY_THRESHOLD && end.visibility > VISIBILITY_THRESHOLD;
+                    });
 
-        <!-- Controls -->
-        <div class="bg-white border border-gray-300 rounded-xl p-4 flex gap-6 text-gray-700 shadow-sm">
-            <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" id="toggle-palm" checked class="accent-teal-700"> Palm Assessment
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" id="toggle-glow" checked class="accent-teal-700"> Glow Effect
-            </label>
-        </div>
-
-        <script>
-            (async function() {
-                const video = document.getElementById('input-video');
-                const canvas = document.getElementById('output-canvas');
-                const ctx = canvas.getContext('2d');
-                const togglePalm = document.getElementById('toggle-palm');
-                const toggleGlow = document.getElementById('toggle-glow');
-
-                const pose = new Pose({
-                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-                });
-
-                // Balanced settings: Reduced model complexity for speed, tuned confidence for stability
-                pose.setOptions({ 
-                    modelComplexity: 1, 
-                    smoothLandmarks: true,
-                    enableSegmentation: false,
-                    minDetectionConfidence: 0.6,
-                    minTrackingConfidence: 0.6 
-                });
-
-                pose.onResults((results) => {
-                    document.getElementById('loading-overlay').style.display = 'none';
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-                    
-                    if (results.poseLandmarks) {
-                        // Stricter visibility threshold to avoid "confused" points
-                        const VISIBILITY_THRESHOLD = 0.65;
-
-                        const filteredLandmarks = results.poseLandmarks.map((lm, idx) => 
-                            (idx < 11 || (!togglePalm.checked && idx >= 17 && idx <= 22)) 
-                                ? { ...lm, visibility: 0 } 
-                                : lm
-                        );
-
-                        const connections = POSE_CONNECTIONS.filter(c => {
-                            const start = filteredLandmarks[c[0]];
-                            const end = filteredLandmarks[c[1]];
-                            const isPalmConnection = (c[0] >= 17 || c[1] >= 17);
-                            
-                            if (!togglePalm.checked && isPalmConnection) return false;
-                            return start.visibility > VISIBILITY_THRESHOLD && end.visibility > VISIBILITY_THRESHOLD;
-                        });
-
-                        if (toggleGlow.checked) {
-                            ctx.shadowBlur = 8;
-                            ctx.shadowColor = '#0d9488';
-                        } else {
-                            ctx.shadowBlur = 0;
-                        }
-
-                        drawConnectors(ctx, filteredLandmarks, connections, {color: '#0d9488', lineWidth: 5});
-                        
-                        drawLandmarks(ctx, filteredLandmarks.filter(lm => lm.visibility > VISIBILITY_THRESHOLD), {color: '#f97316', lineWidth: 2, radius: 5});
-                        
+                    if (toggleGlow.checked) {
+                        ctx.shadowBlur = 8;
+                        ctx.shadowColor = '#0d9488';
+                    } else {
                         ctx.shadowBlur = 0;
                     }
-                });
 
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                video.onloadedmetadata = () => {
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    video.play();
-                    const processFrame = async () => {
-                        await pose.send({image: video});
-                        requestAnimationFrame(processFrame);
-                    };
-                    processFrame();
+                    drawConnectors(ctx, filteredLandmarks, connections, {color: '#0d9488', lineWidth: 5});
+                    drawLandmarks(ctx, filteredLandmarks.filter(lm => lm.visibility > VISIBILITY_THRESHOLD), {color: '#f97316', lineWidth: 2, radius: 5});
+                    ctx.shadowBlur = 0;
+                }
+            });
+
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                video.play();
+                const processFrame = async () => {
+                    await pose.send({image: video});
+                    requestAnimationFrame(processFrame);
                 };
-            })();
-        </script>
-    </section>
+                processFrame();
+            };
+        })();
+    </script>
 </body>
 </html>
