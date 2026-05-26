@@ -67,6 +67,21 @@
 <!-- SECTION 1: HEADER END -->
 <!-- SECTION 2: START -->
 
+   <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posture Assessment Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
     <section id="viewport-section" class="w-full max-w-3xl flex flex-col gap-4">
         <!-- Viewport -->
         <div class="relative rounded-2xl p-3 min-h-[480px] flex flex-col items-center justify-center bg-white border-4 border-teal-800 shadow-2xl overflow-hidden">
@@ -107,12 +122,13 @@
                     locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
                 });
 
+                // Balanced settings: Reduced model complexity for speed, tuned confidence for stability
                 pose.setOptions({ 
-                    modelComplexity: 2, 
+                    modelComplexity: 1, 
                     smoothLandmarks: true,
                     enableSegmentation: false,
-                    minDetectionConfidence: 0.85,
-                    minTrackingConfidence: 0.85 
+                    minDetectionConfidence: 0.6,
+                    minTrackingConfidence: 0.6 
                 });
 
                 pose.onResults((results) => {
@@ -121,21 +137,23 @@
                     ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
                     
                     if (results.poseLandmarks) {
-                        // Keep visibility for all relevant landmarks, mask facial area (0-10)
-                        // If palm is OFF, mask fingers (17-22)
+                        // Stricter visibility threshold to avoid "confused" points
+                        const VISIBILITY_THRESHOLD = 0.65;
+
                         const filteredLandmarks = results.poseLandmarks.map((lm, idx) => 
                             (idx < 11 || (!togglePalm.checked && idx >= 17 && idx <= 22)) 
                                 ? { ...lm, visibility: 0 } 
-                                : { ...lm, visibility: 1 }
+                                : lm
                         );
 
-                        // Define full body connections
-                        let connections = POSE_CONNECTIONS;
-                        if (!togglePalm.checked) {
-                            connections = connections.filter(c => 
-                                !(c[0] >= 17 && c[0] <= 22) && !(c[1] >= 17 && c[1] <= 22)
-                            );
-                        }
+                        const connections = POSE_CONNECTIONS.filter(c => {
+                            const start = filteredLandmarks[c[0]];
+                            const end = filteredLandmarks[c[1]];
+                            const isPalmConnection = (c[0] >= 17 || c[1] >= 17);
+                            
+                            if (!togglePalm.checked && isPalmConnection) return false;
+                            return start.visibility > VISIBILITY_THRESHOLD && end.visibility > VISIBILITY_THRESHOLD;
+                        });
 
                         if (toggleGlow.checked) {
                             ctx.shadowBlur = 8;
@@ -144,11 +162,9 @@
                             ctx.shadowBlur = 0;
                         }
 
-                        // Draw lines (Bones) with high contrast for clinical visibility
                         drawConnectors(ctx, filteredLandmarks, connections, {color: '#0d9488', lineWidth: 5});
                         
-                        // Draw dots (Joints)
-                        drawLandmarks(ctx, filteredLandmarks.filter((lm, i) => i >= 11 && (togglePalm.checked || i < 17)), {color: '#f97316', lineWidth: 2, radius: 5});
+                        drawLandmarks(ctx, filteredLandmarks.filter(lm => lm.visibility > VISIBILITY_THRESHOLD), {color: '#f97316', lineWidth: 2, radius: 5});
                         
                         ctx.shadowBlur = 0;
                     }
