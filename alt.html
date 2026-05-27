@@ -189,10 +189,32 @@
                     </div>
                 </div>
 
-                <!-- CLINICAL MODE SELECTION BAR -->
+                <!-- CLINICAL PROTOCOL SELECTION BAR -->
+                <div class="bg-slate-100 border-b border-slate-200 px-6 py-4 flex flex-col gap-3">
+                    <div class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+                        <div class="flex-grow">
+                            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Select Joint Profile</label>
+                            <div class="relative">
+                                <select id="clinical-joint-select" onchange="onClinicalJointChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 shadow-sm focus:outline-none focus:border-[#0f766e]">
+                                    <!-- Populated Dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex-grow">
+                            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Select Diagnostic Movement</label>
+                            <div class="relative">
+                                <select id="clinical-movement-select" onchange="onClinicalMovementChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 shadow-sm focus:outline-none focus:border-[#0f766e]">
+                                    <!-- Populated Dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLINICAL MODE SELECTION BAR (OVERRULING MODE DISPLAY) -->
                 <div class="bg-teal-50/80 border-b border-teal-100/50 px-6 py-3 flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
-                        <span class="text-xs font-bold text-[#0f766e] uppercase tracking-wider">Analysis Mode:</span>
+                        <span class="text-xs font-bold text-[#0f766e] uppercase tracking-wider">Goniometer Mode:</span>
                     </div>
                     <div class="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-150">
                         <button onclick="changeAngleMode('segment-segment')" id="mode-seg-seg" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 bg-[#0f766e] text-white">
@@ -208,9 +230,17 @@
                 </div>
 
                 <!-- CLINICAL INSTRUCTION BAR -->
-                <div id="clinical-instructions" class="bg-amber-50 border-b border-amber-100 px-6 py-2.5 text-xs text-amber-800 flex items-center gap-2">
-                    <i class="fa-solid fa-circle-info text-amber-600 animate-pulse"></i>
-                    <span id="instruction-text" class="font-medium">Please load an assessment and select a Joint Center to start.</span>
+                <div id="clinical-instructions" class="bg-amber-50 border-b border-amber-100 px-6 py-3 text-xs text-amber-800 flex flex-col gap-1.5">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-amber-600 animate-pulse"></i>
+                        <span id="instruction-text" class="font-bold">Please load an assessment and select a Joint Center to start.</span>
+                    </div>
+                    <!-- Additional metadata values from JSON -->
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 font-medium pl-5">
+                        <span id="meta-camera-view"><i class="fa-solid fa-camera mr-1 text-teal-700"></i>View: --</span>
+                        <span id="meta-normal-rom"><i class="fa-solid fa-compass mr-1 text-[#f97316]"></i>Normal ROM: --</span>
+                        <span id="meta-clinical-notes" class="w-full mt-1 border-t border-amber-100/50 pt-1.5 italic text-slate-600">--</span>
+                    </div>
                 </div>
 
                 <!-- Main Active Canvas & Gallery Workspace -->
@@ -341,6 +371,412 @@
             { idx: 25, name: "Left Knee" },
             { idx: 26, name: "Right Knee" }
         ];
+
+        // Master Clinical Goniometry Protocol Database
+        // Structured for direct use in the selectable anatomical-line calculations
+        const CLINICAL_PROTOCOLS = {
+            "shoulder": {
+                name: "Shoulder",
+                movements: [
+                    {
+                        movement: "Shoulder Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Shoulder joint center", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Trunk (Lateral)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        distal_segment_line: { name: "Upper Arm", landmarks: ["left-upper-arm", "right-upper-arm"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 180° (Flexion), 0° - 60° (Extension)",
+                        clinical_notes: "Align with the midaxillary line of the trunk and humerus."
+                    },
+                    {
+                        movement: "Shoulder Abduction",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Shoulder joint center", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Vertical Plumb line", landmarks: [] },
+                        distal_segment_line: { name: "Upper Arm", landmarks: ["left-upper-arm", "right-upper-arm"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Anterior / Posterior",
+                        normal_rom: "0° - 180°",
+                        clinical_notes: "Measure relative to the vertical spinal column alignment."
+                    },
+                    {
+                        movement: "Shoulder Horizontal Axis Level",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-horizontal",
+                        axis: { name: "Shoulder joint center", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Horizontal Level", landmarks: [] },
+                        distal_segment_line: { name: "Shoulder Axis", landmarks: ["collar-alignment"] },
+                        reference_type: "segment-horizontal",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: true,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Anterior / Posterior",
+                        normal_rom: "0° - 10° (Normal horizontal posture deviation)",
+                        clinical_notes: "Assesses clavicular alignment level and lateral head tilt elevation."
+                    }
+                ]
+            },
+            "elbow": {
+                name: "Elbow",
+                movements: [
+                    {
+                        movement: "Elbow Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Elbow center", landmark: [13, 14] },
+                        proximal_segment_line: { name: "Upper Arm", landmarks: ["left-upper-arm", "right-upper-arm"] },
+                        distal_segment_line: { name: "Forearm", landmarks: ["left-forearm", "right-forearm"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 150°",
+                        clinical_notes: "Check for anatomical hyperextension beyond 0°."
+                    }
+                ]
+            },
+            "forearm": {
+                name: "Forearm",
+                movements: [
+                    {
+                        movement: "Pronation / Supination",
+                        movement_plane: "Transverse",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Wrist center", landmark: [15, 16] },
+                        proximal_segment_line: { name: "Vertical Axis", landmarks: [] },
+                        distal_segment_line: { name: "Forearm", landmarks: ["left-forearm", "right-forearm"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Anterior (elbow flexed at 90°)",
+                        normal_rom: "0° - 80° (Pronation), 0° - 80° (Supination)",
+                        clinical_notes: "Instruct patient to hold a vertical rod/pen to assist distal tracking vector identification."
+                    }
+                ]
+            },
+            "wrist": {
+                name: "Wrist",
+                movements: [
+                    {
+                        movement: "Wrist Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Wrist center (snapping priority increased)", landmark: [15, 16] },
+                        proximal_segment_line: { name: "Forearm", landmarks: ["left-forearm", "right-forearm"] },
+                        distal_segment_line: { name: "Hand Index Vector", landmarks: ["left-forearm", "right-forearm"] }, // Derived Wrist-to-Hand connection
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 80° (Flexion), 0° - 70° (Extension)",
+                        clinical_notes: "Ensure fingers are relaxed to avoid artificial tendon-based ROM constraints."
+                    },
+                    {
+                        movement: "Radial / Ulnar Deviation",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Wrist center", landmark: [15, 16] },
+                        proximal_segment_line: { name: "Forearm", landmarks: ["left-forearm", "right-forearm"] },
+                        distal_segment_line: { name: "Hand Center Line", landmarks: [] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Anterior (palmar surface)",
+                        normal_rom: "0° - 20° (Radial), 0° - 30° (Ulnar)",
+                        clinical_notes: "Align proximal forearm center and third metacarpal."
+                    }
+                ]
+            },
+            "cervical": {
+                name: "Cervical Spine",
+                movements: [
+                    {
+                        movement: "Cervical Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Shoulder Center (Ear/Nose focus)", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Vertical Reference Line", landmarks: [] },
+                        distal_segment_line: { name: "Ear-Nose Axis", landmarks: ["collar-alignment"] }, // Solved cervical alignment vector
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 45° (Flexion), 0° - 45° (Extension)",
+                        clinical_notes: "Ensure the upper trunk doesn't participate in forward sagittal lean."
+                    },
+                    {
+                        movement: "Cervical Lateral Flexion",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Shoulder Alignment Midpoint", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Vertical Spine Reference Line", landmarks: [] },
+                        distal_segment_line: { name: "Neck Axis", landmarks: ["collar-alignment"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Anterior / Posterior",
+                        normal_rom: "0° - 45°",
+                        clinical_notes: "Align with the vertical line of the cervical vertebrae."
+                    }
+                ]
+            },
+            "lumbar": {
+                name: "Lumbar Spine",
+                movements: [
+                    {
+                        movement: "Lumbar Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Pelvis Center Alignment", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Vertical Axis", landmarks: [] },
+                        distal_segment_line: { name: "Trunk (Lateral)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 60° (Flexion), 0° - 25° (Extension)",
+                        clinical_notes: "Clinically differentiates thoracic compensation from true lumbar pelvic tilt."
+                    },
+                    {
+                        movement: "Lumbar Spine Spine Lateral Flexion",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Pelvis Center Alignment", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Vertical Spine Axis", landmarks: [] },
+                        distal_segment_line: { name: "Trunk (Posterior view)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Posterior",
+                        normal_rom: "0° - 35°",
+                        clinical_notes: "Calculates total spine deviation. Ensure feet stay flat."
+                    }
+                ]
+            },
+            "hip": {
+                name: "Hip",
+                movements: [
+                    {
+                        movement: "Hip Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Hip joint center", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Trunk (Lateral)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        distal_segment_line: { name: "Thigh", landmarks: ["left-thigh", "right-thigh"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 120° (Flexion), 0° - 20° (Extension)",
+                        clinical_notes: "Clinician should ensure pelvic rotation does not occur during flexion assessment."
+                    },
+                    {
+                        movement: "Hip Abduction / Adduction",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-horizontal",
+                        axis: { name: "Hip joint center", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Pelvic Axis", landmarks: ["hip-alignment"] },
+                        distal_segment_line: { name: "Thigh", landmarks: ["left-thigh", "right-thigh"] },
+                        reference_type: "segment-horizontal",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: true,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Anterior",
+                        normal_rom: "0° - 45° (Abduction), 0° - 30° (Adduction)",
+                        clinical_notes: "Angle calculated relative to horizontal pelvis baseline alignment."
+                    }
+                ]
+            },
+            "knee": {
+                name: "Knee",
+                movements: [
+                    {
+                        movement: "Knee Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Knee joint center", landmark: [25, 26] },
+                        proximal_segment_line: { name: "Thigh", landmarks: ["left-thigh", "right-thigh"] },
+                        distal_segment_line: { name: "Shin", landmarks: ["left-shin", "right-shin"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 140°",
+                        clinical_notes: "Assess shin angle relative to femur alignment axis."
+                    }
+                ]
+            },
+            "ankle": {
+                name: "Ankle",
+                movements: [
+                    {
+                        movement: "Ankle Dorsiflexion / Plantarflexion",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Ankle center (snapping priority increased)", landmark: [27, 28] },
+                        proximal_segment_line: { name: "Shin", landmarks: ["left-shin", "right-shin"] },
+                        distal_segment_line: { name: "Foot segment", landmarks: [] }, // Derived ankle to heel/toe index
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 20° (Dorsiflexion), 0° - 50° (Plantarflexion)",
+                        clinical_notes: "Keep knee slightly flexed to isolate Gastrocnemius tightness."
+                    },
+                    {
+                        movement: "Inversion / Eversion",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Ankle center", landmark: [27, 28] },
+                        proximal_segment_line: { name: "Vertical Shin plumb line", landmarks: [] },
+                        distal_segment_line: { name: "Foot Alignment", landmarks: [] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Posterior",
+                        normal_rom: "0° - 35° (Inversion), 0° - 15° (Eversion)",
+                        clinical_notes: "Measures alignment of calcaneus relative to mid-line of calf segment."
+                    }
+                ]
+            },
+            "tmj": {
+                name: "TMJ (Jaw opening)",
+                movements: [
+                    {
+                        movement: "TMJ Depression (Mouth Opening)",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Ear point center", landmark: [7, 8] },
+                        proximal_segment_line: { name: "Vertical Reference Line", landmarks: [] },
+                        distal_segment_line: { name: "Jaw alignment (Ear to mouth index)", landmarks: [] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "35mm - 50mm (Approx 35° - 45° angular translation)",
+                        clinical_notes: "Measure mandible excursion path relative to stationary temporal bones."
+                    }
+                ]
+            },
+            "fingers_thumb": {
+                name: "Fingers & Thumb",
+                movements: [
+                    {
+                        movement: "Finger Flexion (Knuckle MCP)",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Hand Pinky/Index knuckle", landmark: [17, 19, 18, 20] },
+                        proximal_segment_line: { name: "Forearm Axis", landmarks: ["left-forearm", "right-forearm"] },
+                        distal_segment_line: { name: "Hand Index/Pinky segment", landmarks: [] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral / Anterior",
+                        normal_rom: "0° - 90°",
+                        clinical_notes: "Observe tracking values of metacarpophalangeal extension."
+                    }
+                ]
+            }
+        };
+
+        // Initialize user joint profiles menu
+        function initClinicalProtocolsUI() {
+            const jointSelect = document.getElementById('clinical-joint-select');
+            jointSelect.innerHTML = '<option value="">-- Click to Select Joint Protocol --</option>';
+            
+            for (let key in CLINICAL_PROTOCOLS) {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.innerText = CLINICAL_PROTOCOLS[key].name;
+                jointSelect.appendChild(opt);
+            }
+            onClinicalJointChange(); // initial empty state
+        }
+
+        function onClinicalJointChange() {
+            const jointSelect = document.getElementById('clinical-joint-select');
+            const mvtSelect = document.getElementById('clinical-movement-select');
+            const key = jointSelect.value;
+            
+            mvtSelect.innerHTML = '';
+            
+            if (!key || !CLINICAL_PROTOCOLS[key]) {
+                mvtSelect.innerHTML = '<option value="">-- Choose Joint First --</option>';
+                resetMetadataDisplay();
+                return;
+            }
+
+            const protocol = CLINICAL_PROTOCOLS[key];
+            protocol.movements.forEach((m, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.innerText = m.movement;
+                mvtSelect.appendChild(opt);
+            });
+
+            onClinicalMovementChange();
+        }
+
+        function onClinicalMovementChange() {
+            const jointSelect = document.getElementById('clinical-joint-select').value;
+            const mvtIdx = document.getElementById('clinical-movement-select').value;
+
+            if (!jointSelect || mvtIdx === '') return;
+
+            const selectedProtocol = CLINICAL_PROTOCOLS[jointSelect].movements[mvtIdx];
+            
+            // Populate instructional metadata UI
+            document.getElementById('meta-camera-view').innerHTML = `<i class="fa-solid fa-camera mr-1 text-teal-700"></i>Recommended View: <strong class="text-slate-700">${selectedProtocol.recommended_camera_view}</strong>`;
+            document.getElementById('meta-normal-rom').innerHTML = `<i class="fa-solid fa-compass mr-1 text-[#f97316]"></i>Normal Clinical ROM: <strong class="text-[#ea580c]">${selectedProtocol.normal_rom}</strong>`;
+            document.getElementById('meta-clinical-notes').innerText = `Notes: ${selectedProtocol.clinical_notes}`;
+
+            // Auto switch active angle measurement mode based on JSON profile
+            changeAngleMode(selectedProtocol.measurement_type);
+
+            // Trigger workspace reset & guide instruction update
+            selectedJointCenter = null;
+            selectedLines = [];
+            activeHoveredLine = null;
+
+            updateInstructions();
+            redrawDiagnosticWorkspace();
+            showToast(`Loaded clinical profile: ${selectedProtocol.movement}`);
+        }
+
+        function resetMetadataDisplay() {
+            document.getElementById('meta-camera-view').innerHTML = `<i class="fa-solid fa-camera mr-1 text-teal-700"></i>View: --`;
+            document.getElementById('meta-normal-rom').innerHTML = `<i class="fa-solid fa-compass mr-1 text-[#f97316]"></i>Normal ROM: --`;
+            document.getElementById('meta-clinical-notes').innerText = `--`;
+            updateInstructions();
+        }
+
+        // Initialize protocols on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initClinicalProtocolsUI();
+        });
 
         // Initialize MediaPipe Pose Model
         const pose = new Pose({
@@ -568,7 +1004,11 @@
                         const pt = activeLoadedPose[jc.idx];
                         if (pt && pt.visibility > 0.15) {
                             const d = Math.hypot(pt.x - mouseX, pt.y - mouseY);
-                            if (d < 0.04) {
+                            
+                            // Optimized snap tolerance window for smaller joints (wrist/ankle/fingers/TMJ)
+                            const maxDist = [15, 16, 27, 28, 7, 8].includes(jc.idx) ? 0.08 : 0.04;
+                            
+                            if (d < maxDist) {
                                 analysisCanvas.style.cursor = 'pointer';
                                 isJointHovered = true;
                             }
@@ -619,7 +1059,8 @@
                         const pt = activeLoadedPose[jc.idx];
                         if (pt && pt.visibility > 0.15) {
                             const d = Math.hypot(pt.x - clickX, pt.y - clickY);
-                            if (d < bestDist) {
+                            const snapDist = [15, 16, 27, 28].includes(jc.idx) ? 0.08 : 0.04;
+                            if (d < snapDist && d < bestDist) {
                                 bestDist = d;
                                 chosenJoint = jc;
                             }
