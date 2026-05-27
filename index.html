@@ -3,1199 +3,1530 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Step2Track | Clinical ROM Assessment</title>
+    <title>Step2Track | Premium Clinical ROM & Posture Assessment</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MediaPipe Pose and Drawing Utils -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
     <style>
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-        :root {
-            --bg: #eef3f5;
-            --panel: #ffffff;
-            --panel-tinted: #f0f7f7;
-            --teal-dark: #0e7572;
-            --teal: #14b8a6;
-            --teal-light: #ccf0ed;
-            --teal-xlight: #e8f8f7;
-            --orange: #f97316;
-            --orange-dark: #ea580c;
-            --orange-light: #fff0e6;
-            --border: #d8e8e8;
-            --border-light: #e8f0f0;
-            --text: #1a2b2b;
-            --text-2: #4a6060;
-            --text-3: #7a9494;
-            --shadow-sm: 0 1px 4px rgba(0,80,70,0.07);
-            --shadow: 0 4px 16px rgba(0,80,70,0.10);
-            --shadow-lg: 0 8px 32px rgba(0,80,70,0.13);
-            --radius: 14px;
-            --radius-sm: 8px;
-            --radius-lg: 20px;
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f4f8f8; /* Soft clinical teal-tinted light background */
         }
 
-        html, body {
-            height: 100%;
-            font-family: 'DM Sans', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            font-size: 14px;
+        /* Custom subtle scrollbars for clinical lists */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
         }
 
-        /* HEADER */
-        header {
-            background: var(--panel);
-            border-bottom: 1.5px solid var(--border-light);
-            padding: 0 28px;
-            height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 2px 12px rgba(0,80,70,0.06);
+        /* Toggle switches */
+        .switch-input:checked ~ .switch-dot {
+            transform: translateX(100%);
+            background-color: #ffffff;
         }
-
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .logo-icon {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, var(--teal-dark), var(--teal));
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 18px;
-            font-weight: 900;
-            overflow: hidden;
-            flex-shrink: 0;
-        }
-
-        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
-
-        .logo-text h1 {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--text);
-            line-height: 1.1;
-            letter-spacing: -0.5px;
-        }
-
-        .logo-text span {
-            font-size: 11px;
-            color: var(--orange-dark);
-            font-weight: 600;
-            font-style: italic;
-            letter-spacing: 0.1px;
-        }
-
-        .system-badge {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            background: var(--teal-xlight);
-            border: 1px solid var(--teal-light);
-            padding: 6px 14px;
-            border-radius: 999px;
-            color: var(--teal-dark);
-            font-weight: 600;
-            font-size: 12.5px;
-        }
-
-        .pulse-dot {
-            position: relative;
-            width: 8px; height: 8px;
-        }
-        .pulse-dot::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            background: var(--teal);
-            animation: pulse-ring 1.8s ease-out infinite;
-        }
-        .pulse-dot::after {
-            content: '';
-            position: absolute;
-            inset: 1px;
-            border-radius: 50%;
-            background: var(--teal-dark);
-        }
-
-        @keyframes pulse-ring {
-            0% { transform: scale(1); opacity: 0.8; }
-            70% { transform: scale(2.2); opacity: 0; }
-            100% { transform: scale(2.2); opacity: 0; }
-        }
-
-        /* LAYOUT */
-        .app-layout {
-            display: grid;
-            grid-template-columns: 420px 1fr;
-            gap: 18px;
-            padding: 18px 20px 20px;
-            min-height: calc(100vh - 60px);
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        /* LEFT PANEL */
-        .left-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .section-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text);
-            margin-bottom: 10px;
-            letter-spacing: -0.2px;
-        }
-
-        /* LIVE TRACKING CARD */
-        .live-card {
-            background: var(--panel);
-            border-radius: var(--radius-lg);
-            border: 1.5px solid var(--border-light);
-            box-shadow: var(--shadow);
-            overflow: hidden;
-        }
-
-        .live-card-inner { padding: 14px; }
-
-        /* VIEWPORT */
-        .viewport-wrap {
-            position: relative;
-            border-radius: var(--radius);
-            overflow: hidden;
-            background: #0d1a1a;
-            aspect-ratio: 4/3;
-            border: 1.5px solid #1e3535;
-        }
-
-        #loading {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #4a8080;
-            font-size: 13px;
-            font-weight: 500;
-            background: #0d1a1a;
-            z-index: 2;
-        }
-
-        #loading-spinner {
-            width: 20px; height: 20px;
-            border: 2px solid #1e3535;
-            border-top-color: var(--teal);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        #video { display: none; }
-        #canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
-
-        /* CONTROLS ROW */
-        .controls-row {
-            display: flex;
-            align-items: center;
-            gap: 0;
-            padding: 10px 0 8px;
-            border-bottom: 1px solid var(--border-light);
-            margin-bottom: 10px;
-        }
-
-        .ctrl-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            flex: 1;
-            padding: 0 8px;
-        }
-
-        .ctrl-item:not(:last-child) {
-            border-right: 1px solid var(--border-light);
-        }
-
-        .ctrl-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-2);
-            white-space: nowrap;
-        }
-
-        /* Toggle */
-        .toggle-wrap { display: flex; align-items: center; gap: 6px; }
-
-        .toggle-track {
-            width: 42px;
-            height: 22px;
-            border-radius: 999px;
-            background: #d0e4e4;
-            position: relative;
-            cursor: pointer;
-            transition: background 0.2s;
-            border: 1.5px solid #b8d4d4;
-        }
-
-        .toggle-track.on {
-            background: var(--teal);
-            border-color: var(--teal-dark);
-        }
-
-        .toggle-thumb {
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: white;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.18);
-            transition: transform 0.2s;
-        }
-
-        .toggle-track.on .toggle-thumb { transform: translateX(20px); }
-
-        .toggle-badge {
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--teal-dark);
-        }
-
-        .toggle-track:not(.on) .toggle-badge { color: var(--text-3); }
-
-        /* CAPTURE BUTTON */
-        .capture-btn {
-            width: 100%;
-            padding: 11px;
-            background: linear-gradient(135deg, var(--teal-dark), #0f9d90);
-            color: white;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-size: 13.5px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            letter-spacing: 0.2px;
-            transition: all 0.15s;
-            box-shadow: 0 2px 10px rgba(14,117,114,0.30);
-        }
-
-        .capture-btn:hover { background: linear-gradient(135deg, #0c6560, #0e8a80); box-shadow: 0 4px 14px rgba(14,117,114,0.4); }
-        .capture-btn:active { transform: scale(0.98); }
-
-        .capture-btn svg { width: 16px; height: 16px; }
-
-        /* CAPTURED ASSESSMENTS */
-        .captured-section {
-            background: var(--panel);
-            border-radius: var(--radius-lg);
-            border: 1.5px solid var(--border-light);
-            box-shadow: var(--shadow);
-            padding: 14px;
-            flex: 1;
-        }
-
-        #captured-container { display: none; }
-        #captured-container.visible { display: block; }
-
-        .assessment-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-
-        .assessment-card {
-            background: var(--panel-tinted);
-            border: 1.5px solid var(--border);
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .assessment-card img {
-            width: 100%;
-            aspect-ratio: 4/3;
-            object-fit: cover;
-            display: block;
-        }
-
-        .card-actions {
-            padding: 6px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .btn-view {
-            width: 100%;
-            padding: 5px 6px;
-            background: var(--teal);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 11px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
-        .btn-view:hover { background: var(--teal-dark); }
-
-        .btn-download {
-            width: 100%;
-            padding: 5px 6px;
-            background: var(--orange);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 11px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-
-        .btn-download:hover { background: var(--orange-dark); }
-
-        .btn-analyse {
-            width: 100%;
-            padding: 5px 6px;
-            background: white;
-            color: var(--text-2);
-            border: 1.5px solid var(--border);
-            border-radius: 5px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-
-        .btn-analyse:hover { border-color: var(--teal); color: var(--teal-dark); }
-
-        .btn-delete {
-            width: 100%;
-            padding: 4px 6px;
-            background: white;
-            color: #e53e3e;
-            border: 1.5px solid #fca5a5;
-            border-radius: 5px;
-            font-size: 11px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-
-        .btn-delete:hover { background: #fff0f0; }
-
-        /* RIGHT PANEL - ANALYSIS */
-        .right-panel {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .analysis-card {
-            background: var(--panel);
-            border-radius: var(--radius-lg);
-            border: 1.5px solid var(--border-light);
-            box-shadow: var(--shadow-lg);
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-            overflow: hidden;
-            min-height: 0;
-        }
-
-        .analysis-header {
-            padding: 14px 18px;
-            border-bottom: 1.5px solid var(--border-light);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-shrink: 0;
-        }
-
-        .analysis-title {
-            font-size: 16px;
-            font-weight: 800;
-            color: var(--text);
-            letter-spacing: -0.3px;
-        }
-
-        .analysis-header-btns {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-sm {
-            padding: 7px 14px;
-            border-radius: var(--radius-sm);
-            font-size: 12.5px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.15s;
-            border: none;
-            white-space: nowrap;
-        }
-
-        .btn-outline {
-            background: white;
-            color: var(--text-2);
-            border: 1.5px solid var(--border);
-        }
-
-        .btn-outline:hover { border-color: var(--teal); color: var(--teal-dark); }
-
-        .btn-orange {
-            background: var(--orange);
-            color: white;
-            box-shadow: 0 2px 8px rgba(249,115,22,0.3);
-        }
-
-        .btn-orange:hover { background: var(--orange-dark); }
-
-        .btn-teal {
-            background: var(--teal-xlight);
-            color: var(--teal-dark);
-            border: 1.5px solid var(--teal-light);
-        }
-
-        .btn-teal:hover { background: var(--teal-light); }
-
-        /* ANALYSIS BODY */
-        .analysis-body {
-            display: flex;
-            flex: 1;
-            min-height: 0;
-            overflow: hidden;
-        }
-
-        .analysis-canvas-area {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            background: #f2f7f7;
-            min-width: 0;
-            position: relative;
-        }
-
-        .canvas-frame {
-            background: #0d1a1a;
-            border-radius: var(--radius);
-            overflow: hidden;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-            max-width: 100%;
-            max-height: 100%;
-            display: flex;
-        }
-
-        #analysis-canvas {
-            max-width: 100%;
-            max-height: calc(100vh - 280px);
-            display: block;
-            cursor: crosshair;
-            border-radius: var(--radius);
-        }
-
-        .angle-display-overlay {
-            position: absolute;
-            top: 26px;
-            left: 26px;
-            background: rgba(255,255,255,0.93);
-            border: 1.5px solid var(--teal-light);
-            border-radius: var(--radius-sm);
-            padding: 6px 14px;
-            font-size: 15px;
-            font-weight: 800;
-            color: var(--teal-dark);
-            backdrop-filter: blur(4px);
-            font-family: 'DM Mono', monospace;
-        }
-
-        .empty-state {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            color: var(--text-3);
-            text-align: center;
-        }
-
-        .empty-state svg { opacity: 0.3; }
-
-        .empty-state p { font-size: 13px; font-weight: 500; max-width: 200px; line-height: 1.5; }
-
-        /* THUMBNAIL SIDEBAR */
-        .thumb-sidebar {
-            width: 140px;
-            flex-shrink: 0;
-            border-left: 1.5px solid var(--border-light);
-            background: var(--panel-tinted);
-            overflow-y: auto;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .thumb-sidebar-title {
-            font-size: 10.5px;
-            font-weight: 700;
-            color: var(--text-3);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 4px;
-        }
-
-        .thumb-item {
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-            border: 1.5px solid var(--border);
-            cursor: pointer;
-            background: #0d1a1a;
-            transition: border-color 0.15s, box-shadow 0.15s;
-            box-shadow: var(--shadow-sm);
-        }
-
-        .thumb-item:hover { border-color: var(--teal); box-shadow: 0 2px 8px rgba(14,117,114,0.18); }
-        .thumb-item.active { border-color: var(--orange); }
-
-        .thumb-item img {
-            width: 100%;
-            aspect-ratio: 4/3;
-            object-fit: cover;
-            display: block;
-        }
-
-        .thumb-label {
-            padding: 4px 6px;
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--text-3);
-            background: var(--panel-tinted);
-            text-align: center;
-        }
-
-        /* ANALYSIS FOOTER */
-        .analysis-footer {
-            padding: 12px 18px;
-            border-top: 1.5px solid var(--border-light);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-shrink: 0;
-            background: white;
-        }
-
-        .status-bar {
-            background: var(--panel);
-            border-top: 1px solid var(--border-light);
-            padding: 6px 24px;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            font-size: 11px;
-            color: var(--text-3);
-            font-family: 'DM Mono', monospace;
-            gap: 16px;
-        }
-
-        /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
-
-        /* Responsive */
-        @media (max-width: 960px) {
-            .app-layout { grid-template-columns: 1fr; }
-            .right-panel { min-height: 600px; }
+        .switch-input:checked ~ .switch-bg {
+            background-color: #0f766e; /* Clinical Teal */
         }
     </style>
 </head>
-<body>
+<body class="text-slate-800 min-h-screen flex flex-col antialiased">
 
-<header>
-    <div class="logo-area">
-        <div class="logo-icon">
-            <img src="step2heal.jpeg" alt="Logo" onerror="this.parentElement.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'2.5\' width=\'20\' height=\'20\'><path d=\'M13 2L3 14h9l-1 8 10-12h-9l1-8z\'/></svg>'">
-        </div>
-        <div class="logo-text">
-            <h1>Step2Track</h1>
-            <span>Where every step matters</span>
-        </div>
-    </div>
-    <div class="system-badge">
-        <div class="pulse-dot"></div>
-        System Active
-    </div>
-</header>
-
-<div class="app-layout">
-
-    <!-- LEFT PANEL -->
-    <div class="left-panel">
-
-        <!-- LIVE TRACKING CARD -->
-        <div class="live-card">
-            <div class="live-card-inner">
-                <p class="section-title">Live Tracking</p>
-
-                <div class="viewport-wrap">
-                    <div id="loading">
-                        <div id="loading-spinner"></div>
-                        Initializing tracking system...
+    <!-- Premium Clinical Header -->
+    <header class="bg-white border-b border-slate-100 py-3 px-6 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-[1700px] mx-auto flex items-center justify-between">
+            <!-- Left Brand Segment -->
+            <div class="flex items-center gap-4">
+                <div class="w-11 h-11 bg-teal-50 rounded-xl flex items-center justify-center overflow-hidden border border-teal-100 shadow-sm">
+                    <img src="step2heal.jpeg" alt="S2T" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<span class=\'text-teal-700 font-bold text-xl\'>S</span>'">
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center">
+                            <span class="text-[#0f766e]">Step</span><span class="text-[#f97316]">2</span><span>Track</span>
+                        </span>
+                        <span class="text-[10px] bg-teal-50 text-[#0f766e] font-bold px-2 py-0.5 rounded-full border border-teal-100">PRO ROM</span>
                     </div>
-                    <video id="video" playsinline muted></video>
-                    <canvas id="canvas"></canvas>
+                    <p class="text-[11px] text-[#ea580c] font-bold tracking-wide italic">Where every step matters</p>
+                </div>
+            </div>
+            
+            <!-- Right Status Segment -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2.5 bg-emerald-50/80 px-4 py-1.5 rounded-full text-emerald-800 border border-emerald-100 font-semibold text-xs shadow-sm">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    System Active
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="max-w-[1700px] mx-auto p-4 lg:p-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow items-start">
+        
+        <!-- ================= LEFT COLUMN (Live Tracking & Settings) ================= -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- Live Tracking Viewport Card -->
+            <div class="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
+                <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h2 class="font-bold text-slate-800 text-sm tracking-wide uppercase flex items-center gap-2">
+                        <i class="fa-solid fa-video text-[#0f766e]"></i> Live Tracking
+                    </h2>
+                    <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">60 FPS Cap</span>
+                </div>
+                
+                <!-- Camera Feed Container -->
+                <div class="relative bg-slate-950 aspect-video w-full overflow-hidden flex items-center justify-center">
+                    <div id="loading" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3">
+                        <i class="fa-solid fa-circle-notch animate-spin text-2xl text-teal-500"></i>
+                        <span class="text-xs font-medium tracking-wider">INITIALIZING ASSESSMENT CAMERA...</span>
+                    </div>
+                    <video id="video" class="hidden" playsinline muted></video>
+                    <canvas id="canvas" class="w-full h-full object-cover"></canvas>
                 </div>
 
-                <!-- Controls -->
-                <div class="controls-row">
-                    <div class="ctrl-item">
-                        <span class="ctrl-label">Palm Landmarks</span>
-                        <div class="toggle-wrap">
-                            <div class="toggle-track on" id="toggle-palm" onclick="toggleCtrl('palm')">
-                                <div class="toggle-thumb"></div>
+                <!-- Live Control & Settings Tray -->
+                <div class="p-5 space-y-4 bg-white border-t border-slate-100">
+                    <!-- Alignment Control Toggles Grid -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <!-- Palm Toggle -->
+                        <label for="ctrl-palm" class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition cursor-pointer text-center group">
+                            <span class="text-xs font-semibold text-slate-600 mb-2 group-hover:text-slate-900 transition">Palm Landmarks</span>
+                            <div class="relative">
+                                <input type="checkbox" id="ctrl-palm" checked class="switch-input sr-only" />
+                                <div class="switch-bg block w-10 h-6 rounded-full bg-slate-200 transition-colors"></div>
+                                <div class="switch-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
                             </div>
-                            <span class="toggle-badge" id="badge-palm">ON</span>
-                        </div>
-                    </div>
-                    <div class="ctrl-item">
-                        <span class="ctrl-label">Skeletal Glow</span>
-                        <div class="toggle-wrap">
-                            <div class="toggle-track on" id="toggle-glow" onclick="toggleCtrl('glow')">
-                                <div class="toggle-thumb"></div>
+                        </label>
+
+                        <!-- Glow Toggle -->
+                        <label for="ctrl-glow" class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition cursor-pointer text-center group">
+                            <span class="text-xs font-semibold text-slate-600 mb-2 group-hover:text-slate-900 transition">Skeletal Glow</span>
+                            <div class="relative">
+                                <input type="checkbox" id="ctrl-glow" checked class="switch-input sr-only" />
+                                <div class="switch-bg block w-10 h-6 rounded-full bg-slate-200 transition-colors"></div>
+                                <div class="switch-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
                             </div>
-                            <span class="toggle-badge" id="badge-glow">ON</span>
-                        </div>
-                    </div>
-                    <div class="ctrl-item">
-                        <span class="ctrl-label">Joint Dots</span>
-                        <div class="toggle-wrap">
-                            <div class="toggle-track" id="toggle-joints" onclick="toggleCtrl('joints')">
-                                <div class="toggle-thumb"></div>
+                        </label>
+
+                        <!-- Joint Dots Toggle -->
+                        <label for="ctrl-dots" class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition cursor-pointer text-center group">
+                            <span class="text-xs font-semibold text-slate-600 mb-2 group-hover:text-slate-900 transition">Joint Dots</span>
+                            <div class="relative">
+                                <input type="checkbox" id="ctrl-dots" checked class="switch-input sr-only" />
+                                <div class="switch-bg block w-10 h-6 rounded-full bg-slate-200 transition-colors"></div>
+                                <div class="switch-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
                             </div>
-                            <span class="toggle-badge" id="badge-joints">OFF</span>
-                        </div>
+                        </label>
                     </div>
-                </div>
 
-                <button class="capture-btn" id="capture-btn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
-                        <circle cx="12" cy="13" r="4"/>
-                    </svg>
-                    Capture Assessment
-                </button>
-            </div>
-        </div>
-
-        <!-- CAPTURED ASSESSMENTS -->
-        <div class="captured-section">
-            <p class="section-title">Captured Assessments</p>
-            <div id="captured-container">
-                <div id="assessment-grid" class="assessment-grid"></div>
-            </div>
-            <div id="empty-captures" style="color: var(--text-3); font-size: 12.5px; text-align: center; padding: 20px 0;">
-                No assessments captured yet. Press "Capture Assessment" to begin.
-            </div>
-        </div>
-
-    </div>
-
-    <!-- RIGHT PANEL -->
-    <div class="right-panel">
-        <div class="analysis-card">
-            <div class="analysis-header">
-                <span class="analysis-title">Analysis Assessment</span>
-                <div class="analysis-header-btns">
-                    <button class="btn-sm btn-outline" onclick="downloadAnalysis()">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                        Download Analysed Image
+                    <!-- Capture Button -->
+                    <button id="capture-btn" class="w-full bg-[#0f766e] hover:bg-[#0d9488] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-[0.98]">
+                        <i class="fa-solid fa-camera text-base"></i> Capture Assessment
                     </button>
-                    <button class="btn-sm btn-orange" onclick="resetAnalysis()">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 109-9M3 3v4h4"/></svg>
-                        Reset Analysis
-                    </button>
-                    <button class="btn-sm btn-outline" onclick="undoSelection()">Undo Selection</button>
                 </div>
             </div>
 
-            <div class="analysis-body">
-                <!-- CANVAS AREA -->
-                <div class="analysis-canvas-area">
-                    <div id="empty-analysis" class="empty-state">
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.5">
-                            <circle cx="12" cy="12" r="10"/>
-                            <path d="M12 8v4M12 16h.01"/>
-                        </svg>
-                        <p>Capture an assessment and click <strong>View/Analyse</strong> to begin ROM analysis</p>
-                    </div>
-                    <div class="canvas-frame" id="canvas-frame" style="display:none;">
-                        <canvas id="analysis-canvas"></canvas>
-                    </div>
-                    <div class="angle-display-overlay" id="angle-display">Select 3 points</div>
+            <!-- Captured Assessments Repository Card -->
+            <div class="bg-white rounded-2xl border border-slate-150 shadow-md p-5 flex flex-col">
+                <h3 class="text-sm font-bold text-slate-800 tracking-wide uppercase mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-folder-open text-[#0f766e]"></i> Captured Assessments
+                </h3>
+                
+                <!-- Horizontal/Grid Gallery -->
+                <div id="captured-placeholder" class="py-12 border-2 border-dashed border-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-400 gap-2">
+                    <i class="fa-regular fa-images text-2xl"></i>
+                    <span class="text-xs font-medium">No assessments captured yet</span>
                 </div>
-
-                <!-- THUMBNAIL SIDEBAR -->
-                <div class="thumb-sidebar" id="thumb-sidebar">
-                    <div class="thumb-sidebar-title">History</div>
-                    <div id="thumb-list"></div>
+                
+                <div id="grid" class="grid grid-cols-2 gap-4 max-h-[380px] overflow-y-auto custom-scrollbar pr-1 hidden">
+                    <!-- Appended captured frames go here -->
                 </div>
             </div>
 
-            <div class="analysis-footer">
-                <button class="btn-sm btn-outline" onclick="downloadAnalysis()">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
-                    Download Analysed Image
-                </button>
-                <button class="btn-sm btn-orange" onclick="resetAnalysis()">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 109-9M3 3v4h4"/></svg>
-                    Reset Analysis
-                </button>
-                <button class="btn-sm btn-outline" onclick="undoSelection()">Undo Selection</button>
-                <button class="btn-sm btn-teal" style="margin-left: auto;" onclick="vergetAnalysis()">
-                    Verget Analysis
-                </button>
-            </div>
         </div>
+
+        <!-- ================= RIGHT COLUMN (Analysis Workspace) ================= -->
+        <div class="lg:col-span-7">
+            
+            <!-- Analysis Assessment Container -->
+            <div id="workspace-card" class="bg-white rounded-3xl border border-slate-150 shadow-lg overflow-hidden flex flex-col">
+                
+                <!-- Title & Top Toolbar -->
+                <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+                    <div>
+                        <h2 class="font-extrabold text-slate-900 text-lg tracking-tight">Analysis Assessment</h2>
+                        <p class="text-[11px] text-slate-500 font-medium">Professional Digital Goniometer & Posture Alignment System</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="downloadAnalysis()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-download"></i> Download Analysed Image
+                        </button>
+                        <button onclick="resetAnalysis()" class="px-4 py-2 bg-[#f97316] hover:bg-[#ea580c] text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-rotate"></i> Reset Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CLINICAL PROTOCOL SELECTION BAR -->
+                <div class="bg-slate-100 border-b border-slate-200 px-6 py-4 flex flex-col gap-3">
+                    <div class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
+                        <div class="flex-grow">
+                            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Select Joint Profile</label>
+                            <div class="relative">
+                                <select id="clinical-joint-select" onchange="onClinicalJointChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 shadow-sm focus:outline-none focus:border-[#0f766e]">
+                                    <!-- Populated Dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex-grow">
+                            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">Select Diagnostic Movement</label>
+                            <div class="relative">
+                                <select id="clinical-movement-select" onchange="onClinicalMovementChange()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 shadow-sm focus:outline-none focus:border-[#0f766e]">
+                                    <!-- Populated Dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CLINICAL MODE SELECTION BAR (OVERRULING MODE DISPLAY) -->
+                <div class="bg-teal-50/80 border-b border-teal-100/50 px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-[#0f766e] uppercase tracking-wider">Goniometer Mode:</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-white p-1 rounded-xl shadow-sm border border-slate-150">
+                        <button onclick="changeAngleMode('segment-segment')" id="mode-seg-seg" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 bg-[#0f766e] text-white">
+                            <i class="fa-solid fa-circle-nodes mr-1"></i> Segment ↔ Segment
+                        </button>
+                        <button onclick="changeAngleMode('segment-vertical')" id="mode-seg-vert" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200">
+                            <i class="fa-solid fa-arrows-up-down mr-1"></i> Segment ↔ Vertical (Plumb Line)
+                        </button>
+                        <button onclick="changeAngleMode('segment-horizontal')" id="mode-seg-horiz" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200">
+                            <i class="fa-solid fa-arrows-left-right mr-1"></i> Segment ↔ Horizontal (Level)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- DYNAMIC REFERENCE DIRECTION SELECTOR -->
+                <div id="reference-direction-bar" class="bg-[#f0f9ff] border-b border-blue-100 px-6 py-2.5 flex items-center justify-between gap-3 hidden animate-fadeIn">
+                    <span class="text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-compass text-blue-700 animate-spin-slow"></i> Reference Line Perspective
+                    </span>
+                    <div class="flex items-center gap-1 bg-white p-1 rounded-xl shadow-sm border border-blue-150">
+                        <button onclick="toggleReferenceDirection('positive')" id="ref-dir-pos" class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 bg-[#0f766e] text-white">
+                            Upward (⬆)
+                        </button>
+                        <button onclick="toggleReferenceDirection('negative')" id="ref-dir-neg" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200">
+                            Downward (⬇)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CLINICAL INSTRUCTION BAR -->
+                <div id="clinical-instructions" class="bg-amber-50 border-b border-amber-100 px-6 py-3 text-xs text-amber-800 flex flex-col gap-1.5">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-amber-600 animate-pulse"></i>
+                        <span id="instruction-text" class="font-bold">Please load an assessment and select a Joint Center to start.</span>
+                    </div>
+                    <!-- Additional metadata values from JSON -->
+                    <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-500 font-medium pl-5">
+                        <span id="meta-camera-view"><i class="fa-solid fa-camera mr-1 text-teal-700"></i>View: --</span>
+                        <span id="meta-normal-rom"><i class="fa-solid fa-compass mr-1 text-[#f97316]"></i>Normal ROM: --</span>
+                        <span id="meta-clinical-notes" class="w-full mt-1 border-t border-amber-100/50 pt-1.5 italic text-slate-600">--</span>
+                    </div>
+                </div>
+
+                <!-- Main Active Canvas & Gallery Workspace -->
+                <div class="p-6 bg-[#f8fafc] flex flex-col lg:flex-row gap-6 min-h-[460px]">
+                    
+                    <!-- Center Canvas Screen -->
+                    <div class="flex-grow flex items-center justify-center border border-slate-150 rounded-2xl bg-white shadow-inner p-4 relative overflow-hidden group">
+                        
+                        <!-- Empty Workspace Overlay Message -->
+                        <div id="empty-workspace-state" class="absolute inset-0 bg-white/95 flex flex-col items-center justify-center p-6 text-center z-10">
+                            <div class="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mb-4 text-teal-600 border border-teal-100">
+                                <i class="fa-solid fa-magnifying-glass-chart text-2xl"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-base mb-1">Interactive Diagnostic Workspace</h3>
+                            <p class="text-xs text-slate-500 max-w-sm leading-relaxed">Select an assessment snapshot from the left column or gallery to initiate orthopedic ROM mapping.</p>
+                        </div>
+                        
+                        <!-- Interactive Assessment Canvas -->
+                        <div class="relative w-full h-full flex items-center justify-center">
+                            <canvas id="analysis-canvas" class="max-w-full max-h-[400px] shadow-sm rounded-lg cursor-crosshair object-contain hidden"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Right Thumbnail Comparison Strip -->
+                    <div class="lg:w-48 flex flex-col border border-slate-150 bg-white rounded-2xl p-3 shadow-sm min-h-[220px]">
+                        <span class="text-[10px] font-bold text-slate-400 tracking-wider uppercase mb-2.5 px-1 block">ROM Snapshots</span>
+                        <div id="side-thumbnail-strip" class="flex lg:flex-col gap-3 overflow-auto custom-scrollbar flex-grow pr-1">
+                            <!-- Populated with miniature ROM assessments dynamically -->
+                            <div class="text-center py-8 text-slate-300 text-xs font-medium my-auto flex flex-col gap-1.5 justify-center items-center w-full">
+                                <i class="fa-solid fa-list-check text-lg"></i>
+                                <span>No ROM data</span>
+                            </div>
+                        </div>
+                        <div class="mt-2.5 pt-2.5 border-t border-slate-100 text-center">
+                            <span class="text-[10px] font-semibold text-[#0f766e] tracking-wide block uppercase">Verify Analysis</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Bottom Controls Toolbar & Telemetry Status Bar -->
+                <div class="px-6 py-4 border-t border-slate-100 bg-white flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <button onclick="downloadAnalysis()" class="px-5 py-2.5 bg-[#0f766e] hover:bg-[#0d9488] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-download"></i> Download Analysed Image
+                        </button>
+                        <button onclick="resetAnalysis()" class="px-5 py-2.5 bg-[#f97316] hover:bg-[#ea580c] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-rotate"></i> Reset Analysis
+                        </button>
+                        <button onclick="undoSelection()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-arrow-rotate-left"></i> Undo Selection
+                        </button>
+                    </div>
+                    
+                    <!-- Dynamic Readout Badges -->
+                    <div id="angle-display" class="font-extrabold text-base text-[#0f766e] bg-teal-50/80 px-4 py-2 rounded-xl border border-teal-100 shadow-sm md:ml-auto">
+                        Select Joint Center Node
+                    </div>
+                </div>
+
+                <!-- Telemetry Status Strip -->
+                <div class="bg-slate-900 px-6 py-2 flex items-center justify-between text-[11px] text-slate-400 font-mono tracking-tight">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#f97316]"></span>
+                        <span>Clinical Framework: MediPipe BlazePose & Digital Goniometer</span>
+                    </div>
+                    <div id="telemetry-readout">
+                        Landmark Data Storage: Active, data: 124 KB
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Interactive UI Alerts System (Custom replacement for alerts) -->
+    <div id="custom-toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2">
+        <i class="fa-solid fa-circle-info text-teal-400"></i>
+        <span id="toast-message">Action recorded</span>
     </div>
 
-</div>
+    <!-- System Logic Setup -->
+    <script>
+        // Setup state & variables
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const analysisCanvas = document.getElementById('analysis-canvas');
+        const aCtx = analysisCanvas.getContext('2d');
+        
+        let currentData = null;
+        let originalImageData = null;
+        let poseDataHistory = {}; // Keep trace of pose data for snapshots
+        
+        // --- CLINICAL ROM STATE ENGINE ---
+        let selectedJointCenter = null;   // e.g., elbow, shoulder, knee
+        let selectedLines = [];           // array of selected line segments
+        let currentAngleMode = 'segment-segment'; // segment-segment, segment-vertical, segment-horizontal
+        let referenceDirection = 'positive'; // 'positive' (up/right) or 'negative' (down/left)
+        let activeHoveredLine = null;     // line segment currently under cursor
+        let activeLoadedPose = null;      // full pose structure of loaded assessment
 
-<div class="status-bar">
-    <span id="landmark-count">Landmark Data storage: 0</span>
-    <span id="data-size">· data: 0 KB</span>
-</div>
+        // Define valid Anatomical reference segments from MediaPipe Joint Indices
+        const ANATOMICAL_SEGMENTS = [
+            { id: 'right-upper-arm', name: 'Right Upper Arm', start: 12, end: 14 },
+            { id: 'right-forearm', name: 'Right Forearm', start: 14, end: 16 },
+            { id: 'left-upper-arm', name: 'Left Upper Arm', start: 11, end: 13 },
+            { id: 'left-forearm', name: 'Left Forearm', start: 13, end: 15 },
+            { id: 'right-thigh', name: 'Right Thigh', start: 24, end: 26 },
+            { id: 'right-shin', name: 'Right Shin', start: 26, end: 28 },
+            { id: 'left-thigh', name: 'Left Thigh', start: 23, end: 25 },
+            { id: 'left-shin', name: 'Left Shin', start: 25, end: 27 },
+            { id: 'trunk-spine-right', name: 'Trunk (Right Lateral)', start: 12, end: 24 },
+            { id: 'trunk-spine-left', name: 'Trunk (Left Lateral)', start: 11, end: 23 },
+            { id: 'collar-alignment', name: 'Shoulder Axis', start: 11, end: 12 },
+            { id: 'hip-alignment', name: 'Pelvic Axis', start: 23, end: 24 },
+            
+            // Wrist & Ankle explicit segments for exact posture and hand alignment
+            { id: 'right-hand', name: 'Right Hand (MCP Vector)', start: 16, end: 20 },
+            { id: 'left-hand', name: 'Left Hand (MCP Vector)', start: 15, end: 19 },
+            { id: 'right-foot', name: 'Right Foot Segment', start: 28, end: 32 },
+            { id: 'left-foot', name: 'Left Foot Segment', start: 27, end: 31 }
+        ];
 
-<script>
-    // ─── STATE ───────────────────────────────────────────
-    const state = {
-        palm: true,
-        glow: true,
-        joints: false,
-        currentData: null,
-        originalImageData: null,
-        selected: [],
-        captures: [],
-        activeThumbIndex: -1,
-        totalLandmarks: 0,
-        totalDataBytes: 0,
-        currentPoseDataForAnalysis: null
-    };
+        // Core tracking points list that can act as joint centers
+        const CLINICAL_JOINT_CENTERS = [
+            { idx: 11, name: "Left Shoulder" },
+            { idx: 12, name: "Right Shoulder" },
+            { idx: 13, name: "Left Elbow" },
+            { idx: 14, name: "Right Elbow" },
+            { idx: 15, name: "Left Wrist" },
+            { idx: 16, name: "Right Wrist" },
+            { idx: 23, name: "Left Hip" },
+            { idx: 24, name: "Right Hip" },
+            { idx: 25, name: "Left Knee" },
+            { idx: 26, name: "Right Knee" },
+            { idx: 27, name: "Left Ankle" },
+            { idx: 28, name: "Right Ankle" }
+        ];
 
-    // ─── TOGGLE CONTROLS ─────────────────────────────────
-    function toggleCtrl(key) {
-        state[key] = !state[key];
-        const track = document.getElementById('toggle-' + key);
-        const badge = document.getElementById('badge-' + key);
-        if (state[key]) {
-            track.classList.add('on');
-            badge.textContent = 'ON';
-        } else {
-            track.classList.remove('on');
-            badge.textContent = 'OFF';
-        }
-    }
-
-    // ─── MEDIAPIPE SETUP ─────────────────────────────────
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const pose = new Pose({
-        locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
-    });
-
-    pose.setOptions({
-        modelComplexity: 1,
-        smoothLandmarks: true,
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
-    });
-
-    pose.onResults(results => {
-        document.getElementById('loading').style.display = 'none';
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
-        if (results.poseLandmarks) {
-            state.currentData = results.poseLandmarks;
-
-            // Filter: hide face (0-10), optionally palms
-            const filtered = state.currentData.map((lm, i) => {
-                if (i <= 10) return { ...lm, visibility: 0 };
-                if (!state.palm && [17, 19, 21, 18, 20, 22].includes(i)) return { ...lm, visibility: 0 };
-                return lm;
-            });
-
-            // Glow
-            if (state.glow) { ctx.shadowBlur = 12; ctx.shadowColor = '#14b8a6'; }
-
-            // Draw skeleton (teal lines)
-            drawConnectors(ctx, filtered, POSE_CONNECTIONS, { color: '#14b8a6', lineWidth: 3 });
-
-            ctx.shadowBlur = 0;
-
-            // Draw joints
-            if (state.joints) {
-                filtered.forEach(lm => {
-                    if (lm.visibility > 0.2) {
-                        ctx.fillStyle = '#f97316';
-                        ctx.beginPath();
-                        ctx.arc(lm.x * canvas.width, lm.y * canvas.height, 5, 0, Math.PI * 2);
-                        ctx.fill();
+        // Master Clinical Goniometry Protocol Database
+        // Structured for direct use in the selectable anatomical-line calculations
+        const CLINICAL_PROTOCOLS = {
+            "shoulder": {
+                name: "Shoulder",
+                movements: [
+                    {
+                        movement: "Shoulder Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Shoulder joint center", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Trunk (Lateral)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        distal_segment_line: { name: "Upper Arm", landmarks: ["left-upper-arm", "right-upper-arm"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 180° (Flexion), 0° - 60° (Extension)",
+                        clinical_notes: "Align with the midaxillary line of the trunk and humerus."
+                    },
+                    {
+                        movement: "Shoulder Abduction",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Shoulder joint center", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Vertical Plumb line", landmarks: [] },
+                        distal_segment_line: { name: "Upper Arm", landmarks: ["left-upper-arm", "right-upper-arm"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Anterior / Posterior",
+                        normal_rom: "0° - 180°",
+                        clinical_notes: "Measure relative to the vertical spinal column alignment."
+                    },
+                    {
+                        movement: "Shoulder Horizontal Axis Level",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-horizontal",
+                        axis: { name: "Shoulder joint center", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Horizontal Level", landmarks: [] },
+                        distal_segment_line: { name: "Shoulder Axis", landmarks: ["collar-alignment"] },
+                        reference_type: "segment-horizontal",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: true,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Anterior / Posterior",
+                        normal_rom: "0° - 10° (Normal horizontal posture deviation)",
+                        clinical_notes: "Assesses clavicular alignment level and lateral head tilt elevation."
                     }
-                });
-            } else {
-                drawLandmarks(ctx, filtered.filter(l => l.visibility > 0.1), { color: '#ffffff', fillColor: '#0e7572', radius: 4 });
+                ]
+            },
+            "elbow": {
+                name: "Elbow",
+                movements: [
+                    {
+                        movement: "Elbow Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Elbow center", landmark: [13, 14] },
+                        proximal_segment_line: { name: "Upper Arm", landmarks: ["left-upper-arm", "right-upper-arm"] },
+                        distal_segment_line: { name: "Forearm", landmarks: ["left-forearm", "right-forearm"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 150°",
+                        clinical_notes: "Check for anatomical hyperextension beyond 0°."
+                    }
+                ]
+            },
+            "forearm": {
+                name: "Forearm",
+                movements: [
+                    {
+                        movement: "Pronation / Supination",
+                        movement_plane: "Transverse",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Wrist center", landmark: [15, 16] },
+                        proximal_segment_line: { name: "Vertical Axis", landmarks: [] },
+                        distal_segment_line: { name: "Forearm", landmarks: ["left-forearm", "right-forearm"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Anterior (elbow flexed at 90°)",
+                        normal_rom: "0° - 80° (Pronation), 0° - 80° (Supination)",
+                        clinical_notes: "Instruct patient to hold a vertical rod/pen to assist distal tracking vector identification."
+                    }
+                ]
+            },
+            "wrist": {
+                name: "Wrist",
+                movements: [
+                    {
+                        movement: "Wrist Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Wrist center (Optimized Click Snap)", landmark: [15, 16] },
+                        proximal_segment_line: { name: "Forearm", landmarks: ["left-forearm", "right-forearm"] },
+                        distal_segment_line: { name: "Hand MCP Vector", landmarks: ["left-hand", "right-hand"] }, // Upgraded reference mapping
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 80° (Flexion), 0° - 70° (Extension)",
+                        clinical_notes: "Isolates wrist alignment segment using enhanced snapping zones."
+                    },
+                    {
+                        movement: "Radial / Ulnar Deviation",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Wrist center", landmark: [15, 16] },
+                        proximal_segment_line: { name: "Forearm", landmarks: ["left-forearm", "right-forearm"] },
+                        distal_segment_line: { name: "Hand MCP Vector", landmarks: ["left-hand", "right-hand"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Anterior (palmar surface)",
+                        normal_rom: "0° - 20° (Radial), 0° - 30° (Ulnar)",
+                        clinical_notes: "Measure deviation of the hand vector relative to forearm line."
+                    }
+                ]
+            },
+            "cervical": {
+                name: "Cervical Spine",
+                movements: [
+                    {
+                        movement: "Cervical Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Shoulder Center (Ear/Nose focus)", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Vertical Reference Line", landmarks: [] },
+                        distal_segment_line: { name: "Ear-Nose Axis", landmarks: ["collar-alignment"] }, 
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 45° (Flexion), 0° - 45° (Extension)",
+                        clinical_notes: "Ensure the upper trunk doesn't participate in forward sagittal lean."
+                    },
+                    {
+                        movement: "Cervical Lateral Flexion",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Shoulder Alignment Midpoint", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Vertical Spine Reference Line", landmarks: [] },
+                        distal_segment_line: { name: "Neck Axis", landmarks: ["collar-alignment"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Anterior / Posterior",
+                        normal_rom: "0° - 45°",
+                        clinical_notes: "Align with the vertical line of the cervical vertebrae."
+                    }
+                ]
+            },
+            "lumbar": {
+                name: "Lumbar Spine",
+                movements: [
+                    {
+                        movement: "Lumbar Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Pelvis Center Alignment", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Vertical Axis", landmarks: [] },
+                        distal_segment_line: { name: "Trunk (Lateral)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 60° (Flexion), 0° - 25° (Extension)",
+                        clinical_notes: "Clinically differentiates thoracic compensation from true lumbar pelvic tilt."
+                    },
+                    {
+                        movement: "Lumbar Spine Spine Lateral Flexion",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Pelvis Center Alignment", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Vertical Spine Axis", landmarks: [] },
+                        distal_segment_line: { name: "Trunk (Posterior view)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Posterior",
+                        normal_rom: "0° - 35°",
+                        clinical_notes: "Calculates total spine deviation. Ensure feet stay flat."
+                    }
+                ]
+            },
+            "hip": {
+                name: "Hip",
+                movements: [
+                    {
+                        movement: "Hip Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Hip joint center", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Trunk (Lateral)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        distal_segment_line: { name: "Thigh", landmarks: ["left-thigh", "right-thigh"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 120° (Flexion), 0° - 20° (Extension)",
+                        clinical_notes: "Clinician should ensure pelvic rotation does not occur during flexion assessment."
+                    },
+                    {
+                        movement: "Hip Abduction / Adduction",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-horizontal",
+                        axis: { name: "Hip joint center", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Pelvic Axis", landmarks: ["hip-alignment"] },
+                        distal_segment_line: { name: "Thigh", landmarks: ["left-thigh", "right-thigh"] },
+                        reference_type: "segment-horizontal",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: true,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Anterior",
+                        normal_rom: "0° - 45° (Abduction), 0° - 30° (Adduction)",
+                        clinical_notes: "Angle calculated relative to horizontal pelvis baseline alignment."
+                    }
+                ]
+            },
+            "knee": {
+                name: "Knee",
+                movements: [
+                    {
+                        movement: "Knee Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Knee joint center", landmark: [25, 26] },
+                        proximal_segment_line: { name: "Thigh", landmarks: ["left-thigh", "right-thigh"] },
+                        distal_segment_line: { name: "Shin", landmarks: ["left-shin", "right-shin"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 140°",
+                        clinical_notes: "Assess shin angle relative to femur alignment axis."
+                    }
+                ]
+            },
+            "ankle": {
+                name: "Ankle",
+                movements: [
+                    {
+                        movement: "Ankle Dorsiflexion / Plantarflexion",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Ankle center (snapping priority increased)", landmark: [27, 28] },
+                        proximal_segment_line: { name: "Shin", landmarks: ["left-shin", "right-shin"] },
+                        distal_segment_line: { name: "Foot segment", landmarks: ["left-foot", "right-foot"] }, // Upgraded reference
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 20° (Dorsiflexion), 0° - 50° (Plantarflexion)",
+                        clinical_notes: "Keep knee slightly flexed to isolate Gastrocnemius tightness."
+                    },
+                    {
+                        movement: "Inversion / Eversion",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Ankle center", landmark: [27, 28] },
+                        proximal_segment_line: { name: "Vertical Shin plumb line", landmarks: [] },
+                        distal_segment_line: { name: "Foot segment", landmarks: ["left-foot", "right-foot"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Posterior",
+                        normal_rom: "0° - 35° (Inversion), 0° - 15° (Eversion)",
+                        clinical_notes: "Measures alignment of calcaneus relative to vertical shin line."
+                    }
+                ]
+            },
+            "tmj": {
+                name: "TMJ (Jaw opening)",
+                movements: [
+                    {
+                        movement: "TMJ Depression (Mouth Opening)",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Ear point center", landmark: [7, 8] },
+                        proximal_segment_line: { name: "Vertical Reference Line", landmarks: [] },
+                        distal_segment_line: { name: "Jaw alignment (Ear to mouth index)", landmarks: [] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "35mm - 50mm (Approx 35° - 45° angular translation)",
+                        clinical_notes: "Measure mandible excursion path relative to stationary temporal bones."
+                    }
+                ]
+            },
+            "fingers_thumb": {
+                name: "Fingers & Thumb",
+                movements: [
+                    {
+                        movement: "Finger Flexion (Knuckle MCP)",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Hand Pinky/Index knuckle", landmark: [17, 19, 18, 20] },
+                        proximal_segment_line: { name: "Forearm Axis", landmarks: ["left-forearm", "right-forearm"] },
+                        distal_segment_line: { name: "Hand MCP Vector", landmarks: ["left-hand", "right-hand"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral / Anterior",
+                        normal_rom: "0° - 90°",
+                        clinical_notes: "Observe tracking values of metacarpophalangeal extension."
+                    }
+                ]
             }
-        }
-    });
-
-    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-        video.srcObject = stream;
-        video.play();
-        const loop = async () => {
-            await pose.send({ image: video });
-            requestAnimationFrame(loop);
         };
-        video.onloadedmetadata = () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            loop();
-        };
-    }).catch(() => {
-        document.getElementById('loading').textContent = 'Camera access denied or unavailable.';
-    });
 
-    // ─── CAPTURE ─────────────────────────────────────────
-    document.getElementById('capture-btn').onclick = () => {
-        if (!state.currentData) return;
-
-        const dataURL = canvas.toDataURL('image/jpeg', 0.92);
-        const poseDataCopy = JSON.parse(JSON.stringify(state.currentData));
-        const index = state.captures.length;
-
-        state.captures.push({ dataURL, poseData: poseDataCopy });
-        state.totalLandmarks += poseDataCopy.length;
-        state.totalDataBytes += dataURL.length * 0.75;
-        updateStatusBar();
-
-        addAssessmentCard(dataURL, poseDataCopy, index);
-        addThumb(dataURL, poseDataCopy, index);
-
-        document.getElementById('captured-container').style.display = 'block';
-        document.getElementById('empty-captures').style.display = 'none';
-    };
-
-    function addAssessmentCard(dataURL, poseData, index) {
-        const grid = document.getElementById('assessment-grid');
-        const card = document.createElement('div');
-        card.className = 'assessment-card';
-        card.id = 'card-' + index;
-        card.innerHTML = `
-            <img src="${dataURL}" alt="Assessment ${index + 1}">
-            <div class="card-actions">
-                <button class="btn-view" onclick="viewAssessment(${index})">View/Analyse</button>
-                <button class="btn-download" onclick="downloadCapture(${index})">Download</button>
-                <button class="btn-analyse" onclick="viewAssessment(${index})">Analyse Picture</button>
-                <button class="btn-delete" onclick="deleteCapture(${index})">Delete</button>
-            </div>
-        `;
-        grid.prepend(card);
-    }
-
-    function addThumb(dataURL, poseData, index) {
-        const list = document.getElementById('thumb-list');
-        const item = document.createElement('div');
-        item.className = 'thumb-item';
-        item.id = 'thumb-' + index;
-        item.onclick = () => viewAssessment(index);
-        item.innerHTML = `
-            <img src="${dataURL}" alt="Thumb ${index + 1}">
-            <div class="thumb-label">View Analysis</div>
-        `;
-        list.appendChild(item);
-    }
-
-    function deleteCapture(index) {
-        const card = document.getElementById('card-' + index);
-        const thumb = document.getElementById('thumb-' + index);
-        if (card) card.remove();
-        if (thumb) thumb.remove();
-        state.captures[index] = null;
-
-        const remaining = state.captures.filter(c => c !== null);
-        if (remaining.length === 0) {
-            document.getElementById('captured-container').style.display = 'none';
-            document.getElementById('empty-captures').style.display = 'block';
+        // Initialize user joint profiles menu
+        function initClinicalProtocolsUI() {
+            const jointSelect = document.getElementById('clinical-joint-select');
+            jointSelect.innerHTML = '<option value="">-- Click to Select Joint Protocol --</option>';
+            
+            for (let key in CLINICAL_PROTOCOLS) {
+                const opt = document.createElement('option');
+                opt.value = key;
+                opt.innerText = CLINICAL_PROTOCOLS[key].name;
+                jointSelect.appendChild(opt);
+            }
+            onClinicalJointChange(); // initial empty state
         }
-    }
 
-    function downloadCapture(index) {
-        const cap = state.captures[index];
-        if (!cap) return;
-        const a = document.createElement('a');
-        a.download = `assessment-${index + 1}.jpg`;
-        a.href = cap.dataURL;
-        a.click();
-    }
+        function onClinicalJointChange() {
+            const jointSelect = document.getElementById('clinical-joint-select');
+            const mvtSelect = document.getElementById('clinical-movement-select');
+            const key = jointSelect.value;
+            
+            mvtSelect.innerHTML = '';
+            
+            if (!key || !CLINICAL_PROTOCOLS[key]) {
+                mvtSelect.innerHTML = '<option value="">-- Choose Joint First --</option>';
+                resetMetadataDisplay();
+                return;
+            }
 
-    // ─── ANALYSIS ────────────────────────────────────────
-    function viewAssessment(index) {
-        const cap = state.captures[index];
-        if (!cap) return;
-
-        // Mark active thumb
-        if (state.activeThumbIndex >= 0) {
-            const prev = document.getElementById('thumb-' + state.activeThumbIndex);
-            if (prev) prev.classList.remove('active');
-        }
-        state.activeThumbIndex = index;
-        const curr = document.getElementById('thumb-' + index);
-        if (curr) curr.classList.add('active');
-
-        state.originalImageData = cap.dataURL;
-        state.currentPoseDataForAnalysis = cap.poseData;
-        state.selected = [];
-
-        const aCanvas = document.getElementById('analysis-canvas');
-        const aCtx = aCanvas.getContext('2d');
-        const img = new Image();
-        img.src = cap.dataURL;
-        img.onload = () => {
-            aCanvas.width = img.width;
-            aCanvas.height = img.height;
-            aCtx.drawImage(img, 0, 0);
-
-            // Redraw skeleton on analysis canvas
-            const filtered = cap.poseData.map((lm, i) => {
-                if (i <= 10) return { ...lm, visibility: 0 };
-                return lm;
+            const protocol = CLINICAL_PROTOCOLS[key];
+            protocol.movements.forEach((m, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                opt.innerText = m.movement;
+                mvtSelect.appendChild(opt);
             });
-            aCtx.shadowBlur = 10;
-            aCtx.shadowColor = '#14b8a6';
-            drawConnectors(aCtx, filtered, POSE_CONNECTIONS, { color: '#14b8a6', lineWidth: 3 });
-            aCtx.shadowBlur = 0;
-            drawLandmarks(aCtx, filtered.filter(l => l.visibility > 0.1), { color: '#ffffff', fillColor: '#0e7572', radius: 5 });
 
-            aCanvas.onclick = (e) => handlePointSelect(e, cap.poseData, aCtx, aCanvas);
-        };
+            onClinicalMovementChange();
+        }
 
-        document.getElementById('empty-analysis').style.display = 'none';
-        document.getElementById('canvas-frame').style.display = 'flex';
-        document.getElementById('angle-display').textContent = 'Select 3 points';
-    }
+        function onClinicalMovementChange() {
+            const jointSelect = document.getElementById('clinical-joint-select').value;
+            const mvtIdx = document.getElementById('clinical-movement-select').value;
 
-    function handlePointSelect(e, poseData, ctx, can) {
-        if (state.selected.length >= 3) return;
+            if (!jointSelect || mvtIdx === '') return;
 
-        const rect = can.getBoundingClientRect();
-        const sx = can.width / rect.width;
-        const sy = can.height / rect.height;
-        const x = (e.clientX - rect.left) * sx / can.width;
-        const y = (e.clientY - rect.top) * sy / can.height;
+            const selectedProtocol = CLINICAL_PROTOCOLS[jointSelect].movements[mvtIdx];
+            
+            // Populate instructional metadata UI
+            document.getElementById('meta-camera-view').innerHTML = `<i class="fa-solid fa-camera mr-1 text-teal-700"></i>Recommended View: <strong class="text-slate-700">${selectedProtocol.recommended_camera_view}</strong>`;
+            document.getElementById('meta-normal-rom').innerHTML = `<i class="fa-solid fa-compass mr-1 text-[#f97316]"></i>Normal Clinical ROM: <strong class="text-[#ea580c]">${selectedProtocol.normal_rom}</strong>`;
+            document.getElementById('meta-clinical-notes').innerText = `Notes: ${selectedProtocol.clinical_notes}`;
 
-        let best = { d: 0.1, i: -1 };
-        poseData.forEach((p, i) => {
-            if (i > 10 && p.visibility > 0.1) {
-                const dist = Math.hypot(p.x - x, p.y - y);
-                if (dist < best.d) best = { d: dist, i };
+            // Auto switch active angle measurement mode based on JSON profile
+            changeAngleMode(selectedProtocol.measurement_type);
+
+            // Trigger workspace reset & guide instruction update
+            selectedJointCenter = null;
+            selectedLines = [];
+            activeHoveredLine = null;
+
+            updateInstructions();
+            redrawDiagnosticWorkspace();
+            showToast(`Loaded clinical profile: ${selectedProtocol.movement}`);
+        }
+
+        function resetMetadataDisplay() {
+            document.getElementById('meta-camera-view').innerHTML = `<i class="fa-solid fa-camera mr-1 text-teal-700"></i>View: --`;
+            document.getElementById('meta-normal-rom').innerHTML = `<i class="fa-solid fa-compass mr-1 text-[#f97316]"></i>Normal ROM: --`;
+            document.getElementById('meta-clinical-notes').innerText = `--`;
+            updateInstructions();
+        }
+
+        // Initialize protocols on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initClinicalProtocolsUI();
+        });
+
+        // Initialize MediaPipe Pose Model
+        const pose = new Pose({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+        });
+
+        pose.setOptions({
+            modelComplexity: 1,
+            smoothLandmarks: true,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
+        });
+
+        // Toast Alert helper
+        function showToast(message) {
+            const toast = document.getElementById('custom-toast');
+            document.getElementById('toast-message').innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Live Pose tracking loop
+        pose.onResults(results => {
+            document.getElementById('loading').classList.add('hidden');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+            
+            if (results.poseLandmarks) {
+                currentData = results.poseLandmarks;
+                
+                // Filtering configuration
+                const showPalms = document.getElementById('ctrl-palm').checked;
+                const showGlow = document.getElementById('ctrl-glow').checked;
+                const showDots = document.getElementById('ctrl-dots').checked;
+
+                // Eliminate face (0-10) and hands/palms tips if configured off
+                const filtered = currentData.map((lm, i) => {
+                    if (i <= 10) return { ...lm, visibility: 0 }; // Remove face
+                    if (!showPalms && [17, 19, 21, 18, 20, 22].includes(i)) return { ...lm, visibility: 0 }; // Hide palm tips
+                    return lm;
+                });
+
+                // Render styles - Premium Clinical Theme
+                if (showGlow) {
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = '#0d9488'; // soft teal glow
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+
+                // Smooth white body lines (thicker for high clinical visibility)
+                drawConnectors(ctx, filtered, POSE_CONNECTIONS, { color: '#ffffff', lineWidth: 6 });
+                
+                // Draw joint tracking points (if selected toggle)
+                if (showDots) {
+                    ctx.shadowBlur = 0; // Disable glow on points for crisp markers
+                    drawLandmarks(ctx, filtered.filter(l => l.visibility > 0.15), {
+                        color: '#f97316', // Orange joint marker highlight
+                        radius: 5,
+                        lineWidth: 1
+                    });
+                }
+                ctx.shadowBlur = 0;
             }
         });
 
-        if (best.i !== -1) {
-            const lm = poseData[best.i];
-            state.selected.push({ ...lm, lmIndex: best.i });
+        // Initialize user media
+        navigator.mediaDevices.getUserMedia({
+            video: { width: 1280, height: 720, facingMode: "user" }
+        }).then(stream => {
+            video.srcObject = stream;
+            video.play();
+            const processPose = async () => {
+                await pose.send({ image: video });
+                requestAnimationFrame(processPose);
+            };
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                processPose();
+            };
+        }).catch(err => {
+            document.getElementById('loading').innerHTML = `
+                <div class="text-center p-6 text-rose-500">
+                    <i class="fa-solid fa-video-slash text-3xl mb-2"></i>
+                    <p class="text-sm font-bold">Webcam Access Prohibited</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Please enable webcam permissions to use Step2Track ROM system.</p>
+                </div>
+            `;
+        });
 
-            const num = state.selected.length;
-            const cx = lm.x * can.width;
-            const cy = lm.y * can.height;
+        // Capture Frame System
+        document.getElementById('capture-btn').onclick = () => {
+            if (!currentData) {
+                showToast("System not ready. Wait for pose detection!");
+                return;
+            }
+            
+            const dataUrl = canvas.toDataURL();
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const assessmentId = 'assessment_' + Date.now();
+            
+            // Store coordinates and payload trace
+            poseDataHistory[assessmentId] = JSON.parse(JSON.stringify(currentData));
 
-            // Draw orange numbered circle
-            ctx.fillStyle = '#f97316';
-            ctx.beginPath();
-            ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-            ctx.fill();
+            // Hide initial empty placeholder
+            document.getElementById('captured-placeholder').classList.add('hidden');
+            document.getElementById('grid').classList.remove('hidden');
 
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 12px DM Sans, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(num, cx, cy);
+            // Append snapshot HTML elements
+            const card = document.createElement('div');
+            card.id = `card_${assessmentId}`;
+            card.className = "bg-slate-50/50 p-2.5 rounded-xl border border-slate-150 shadow-sm flex flex-col group transition hover:border-[#0f766e] hover:shadow-md";
+            card.innerHTML = `
+                <div class="relative rounded-lg overflow-hidden aspect-video bg-black mb-2">
+                    <img src="${dataUrl}" class="w-full h-full object-cover">
+                    <span class="absolute bottom-1 right-1.5 bg-black/60 text-[9px] text-white font-mono px-1.5 py-0.5 rounded">${timestamp}</span>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <button onclick="loadToWorkspace('${assessmentId}', '${dataUrl}')" class="w-full py-1.5 bg-[#0f766e] hover:bg-[#0d9488] text-white rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-magnifying-glass-chart"></i> View/Analyse
+                    </button>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button onclick="downloadDirectly('${dataUrl}')" class="py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-semibold transition">
+                            <i class="fa-solid fa-download"></i> Download
+                        </button>
+                        <button onclick="deleteAssessment('${assessmentId}')" class="py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded text-[10px] font-semibold transition">
+                            <i class="fa-solid fa-trash-can"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('grid').prepend(card);
+            
+            // Auto populate workspace with latest capture
+            loadToWorkspace(assessmentId, dataUrl);
+            updateSideThumbnailStrip();
+            showToast("Frame loaded to posture analysis board!");
+        };
 
-            if (state.selected.length === 3) {
-                drawAngleArc(ctx, can);
+        // Switch active diagnostic angle mode
+        function changeAngleMode(mode) {
+            currentAngleMode = mode;
+            
+            // Adjust visual tabs
+            document.getElementById('mode-seg-seg').className = (mode === 'segment-segment') ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#0f766e] text-white transition-all' : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+            document.getElementById('mode-seg-vert').className = (mode === 'segment-vertical') ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#0f766e] text-white transition-all' : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+            document.getElementById('mode-seg-horiz').className = (mode === 'segment-horizontal') ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#0f766e] text-white transition-all' : 'px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+
+            // Reset only line selections, keep joint center
+            selectedLines = [];
+            updateReferenceDirectionUI();
+            updateInstructions();
+            redrawDiagnosticWorkspace();
+            showToast(`Switched mode: ${mode.toUpperCase().replace('-', ' ')}`);
+        }
+
+        // Toggle perspective directions
+        function toggleReferenceDirection(dir) {
+            referenceDirection = dir;
+            const posBtn = document.getElementById('ref-dir-pos');
+            const negBtn = document.getElementById('ref-dir-neg');
+            
+            if (dir === 'positive') {
+                posBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-[#0f766e] text-white transition-all duration-200";
+                negBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200";
+            } else {
+                posBtn.className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all duration-200";
+                negBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-[#0f766e] text-white transition-all duration-200";
+            }
+            redrawDiagnosticWorkspace();
+        }
+
+        // Manage dynamic direction selection elements
+        function updateReferenceDirectionUI() {
+            const bar = document.getElementById('reference-direction-bar');
+            const posBtn = document.getElementById('ref-dir-pos');
+            const negBtn = document.getElementById('ref-dir-neg');
+            
+            if (currentAngleMode === 'segment-vertical') {
+                bar.classList.remove('hidden');
+                posBtn.innerText = "Upward (⬆)";
+                negBtn.innerText = "Downward (⬇)";
+                toggleReferenceDirection(referenceDirection);
+            } else if (currentAngleMode === 'segment-horizontal') {
+                bar.classList.remove('hidden');
+                posBtn.innerText = "Rightward (➡)";
+                negBtn.innerText = "Leftward (⬅)";
+                toggleReferenceDirection(referenceDirection);
+            } else {
+                bar.classList.add('hidden');
             }
         }
-    }
 
-    function drawAngleArc(ctx, can) {
-        const [p1, p2, p3] = state.selected;
+        // Handle dynamic instructions bar
+        function updateInstructions() {
+            const instr = document.getElementById('instruction-text');
+            if (!activeLoadedPose) {
+                instr.innerText = "Please capture or choose an assessment from the left panel to begin.";
+                return;
+            }
+            if (!selectedJointCenter) {
+                instr.innerText = "Step 1: Choose Joint Center (Click orange joint node on body).";
+                return;
+            }
+            
+            if (currentAngleMode === 'segment-segment') {
+                if (selectedLines.length === 0) {
+                    instr.innerText = `Joint: ${selectedJointCenter.name}. Step 2: Select first anatomical line segment.`;
+                } else if (selectedLines.length === 1) {
+                    instr.innerText = `First line: ${selectedLines[0].name}. Step 3: Select second anatomical segment.`;
+                } else {
+                    instr.innerText = "Goniometer Complete! Reset or Undo to alter metrics.";
+                }
+            } else {
+                // Vertical or Horizontal mode
+                if (selectedLines.length === 0) {
+                    instr.innerText = `Joint: ${selectedJointCenter.name}. Step 2: Select anatomical segment to evaluate against axis.`;
+                } else {
+                    instr.innerText = "Alignment analysis complete! Dashed perpendicular axis displayed.";
+                }
+            }
+        }
 
-        const x1 = p1.x * can.width, y1 = p1.y * can.height;
-        const x2 = p2.x * can.width, y2 = p2.y * can.height;
-        const x3 = p3.x * can.width, y3 = p3.y * can.height;
+        // Load targeted snapshot into Diagnostic Workspace
+        function loadToWorkspace(id, dataUrl) {
+            originalImageData = dataUrl;
+            selectedJointCenter = null;
+            selectedLines = [];
+            activeHoveredLine = null;
+            
+            activeLoadedPose = poseDataHistory[id];
+            document.getElementById('empty-workspace-state').classList.add('hidden');
+            analysisCanvas.classList.remove('hidden');
+            
+            // Set up interactive click & hover handlers on diagnostic canvas
+            setupCanvasInteractions();
+            redrawDiagnosticWorkspace();
+            updateInstructions();
+            
+            // Adjust telemetry readout details
+            document.getElementById('telemetry-readout').innerText = `Pose Data: Loaded successfully, id: ${id}`;
+        }
 
-        // Draw lines (teal)
-        ctx.strokeStyle = '#14b8a6';
-        ctx.lineWidth = 4;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = '#14b8a6';
-        ctx.beginPath();
-        ctx.moveTo(x2, y2);
-        ctx.lineTo(x1, y1);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(x2, y2);
-        ctx.lineTo(x3, y3);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
+        function setupCanvasInteractions() {
+            analysisCanvas.onmousemove = (e) => {
+                if (!activeLoadedPose) return;
+                const rect = analysisCanvas.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left) / rect.width;
+                const mouseY = (e.clientY - rect.top) / rect.height;
 
-        // Arc
-        const startAngle = Math.atan2(y1 - y2, x1 - x2);
-        const endAngle = Math.atan2(y3 - y2, x3 - x2);
+                // Check segment hovering
+                const prevHover = activeHoveredLine;
+                activeHoveredLine = null;
+                analysisCanvas.style.cursor = 'default';
 
-        ctx.strokeStyle = '#f97316';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(x2, y2, 48, startAngle, endAngle);
-        ctx.stroke();
+                // First check if user is hovering over valid joint centers (if no joint center is selected yet)
+                let isJointHovered = false;
+                if (!selectedJointCenter) {
+                    CLINICAL_JOINT_CENTERS.forEach(jc => {
+                        const pt = activeLoadedPose[jc.idx];
+                        if (pt && pt.visibility > 0.15) {
+                            const d = Math.hypot(pt.x - mouseX, pt.y - mouseY);
+                            
+                            // Optimized snap tolerance window for smaller joints (wrist/ankle/fingers/TMJ)
+                            const maxDist = [15, 16, 27, 28, 7, 8].includes(jc.idx) ? 0.08 : 0.04;
+                            
+                            if (d < maxDist) {
+                                analysisCanvas.style.cursor = 'pointer';
+                                isJointHovered = true;
+                            }
+                        }
+                    });
+                }
 
-        // Angle calc
-        const angle = Math.abs(Math.atan2(p3.y - p2.y, p3.x - p2.x) - Math.atan2(p1.y - p2.y, p1.x - p2.x)) * 180 / Math.PI;
-        const displayAngle = Math.min(angle, 360 - angle);
+                // If not hovering joint center, evaluate anatomical segment lines
+                if (!isJointHovered && selectedJointCenter) {
+                    let bestSegment = null;
+                    let bestDist = 0.05; // hover threshold distance
 
-        // ROM label on canvas
-        const midX = (x1 + x2 + x3) / 3;
-        const midY = (y1 + y2 + y3) / 3 - 30;
+                    ANATOMICAL_SEGMENTS.forEach(seg => {
+                        const pStart = activeLoadedPose[seg.start];
+                        const pEnd = activeLoadedPose[seg.end];
+                        if (pStart && pEnd && pStart.visibility > 0.15 && pEnd.visibility > 0.15) {
+                            // Calculate distance from point to line segment
+                            const dist = getDistanceToLineSegment(mouseX, mouseY, pStart.x, pStart.y, pEnd.x, pEnd.y);
+                            if (dist < bestDist) {
+                                bestDist = dist;
+                                bestSegment = seg;
+                            }
+                        }
+                    });
 
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        const label = `Elbow ROM: ${displayAngle.toFixed(0)}°`;
-        ctx.font = 'bold 18px DM Sans, sans-serif';
-        const tw = ctx.measureText(label).width;
-        ctx.roundRect(midX - tw / 2 - 10, midY - 16, tw + 20, 30, 6);
-        ctx.fill();
+                    if (bestSegment) {
+                        activeHoveredLine = bestSegment;
+                        analysisCanvas.style.cursor = 'pointer';
+                    }
+                }
 
-        ctx.fillStyle = '#0e7572';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label, midX, midY);
+                if (prevHover !== activeHoveredLine) {
+                    redrawDiagnosticWorkspace();
+                }
+            };
 
-        document.getElementById('angle-display').textContent = `ROM: ${displayAngle.toFixed(1)}°`;
-    }
+            analysisCanvas.onclick = (e) => {
+                if (!activeLoadedPose) return;
+                const rect = analysisCanvas.getBoundingClientRect();
+                const clickX = (e.clientX - rect.left) / rect.width;
+                const clickY = (e.clientY - rect.top) / rect.height;
 
-    function resetAnalysis() {
-        state.selected = [];
-        document.getElementById('angle-display').textContent = 'Select 3 points';
-        if (!state.originalImageData || !state.currentPoseDataForAnalysis) return;
+                // If no joint center selected, evaluate selection of joint center first
+                if (!selectedJointCenter) {
+                    let chosenJoint = null;
+                    let bestDist = 0.04;
+                    CLINICAL_JOINT_CENTERS.forEach(jc => {
+                        const pt = activeLoadedPose[jc.idx];
+                        if (pt && pt.visibility > 0.15) {
+                            const d = Math.hypot(pt.x - clickX, pt.y - clickY);
+                            const snapDist = [15, 16, 27, 28, 7, 8].includes(jc.idx) ? 0.08 : 0.04;
+                            if (d < snapDist && d < bestDist) {
+                                bestDist = d;
+                                chosenJoint = jc;
+                            }
+                        }
+                    });
 
-        const aCanvas = document.getElementById('analysis-canvas');
-        const aCtx = aCanvas.getContext('2d');
-        const img = new Image();
-        img.src = state.originalImageData;
-        img.onload = () => {
-            aCtx.drawImage(img, 0, 0);
-            const filtered = state.currentPoseDataForAnalysis.map((lm, i) => {
-                if (i <= 10) return { ...lm, visibility: 0 };
-                return lm;
+                    if (chosenJoint) {
+                        selectedJointCenter = chosenJoint;
+                        showToast(`Selected Joint Center: ${chosenJoint.name}`);
+                        updateInstructions();
+                        redrawDiagnosticWorkspace();
+                        return;
+                    }
+                }
+
+                // If joint center is already selected, select anatomical segment lines
+                if (selectedJointCenter) {
+                    if (activeHoveredLine) {
+                        // Avoid duplicates
+                        if (selectedLines.some(l => l.id === activeHoveredLine.id)) {
+                            showToast("Segment already selected!");
+                            return;
+                        }
+
+                        // Mode limits
+                        if (currentAngleMode === 'segment-segment' && selectedLines.length >= 2) {
+                            showToast("2 segments maximum. Reset or change modes to redraw!");
+                            return;
+                        }
+                        if (currentAngleMode !== 'segment-segment' && selectedLines.length >= 1) {
+                            showToast("1 segment maximum for axis mode. Reset to change.");
+                            return;
+                        }
+
+                        selectedLines.push(activeHoveredLine);
+                        showToast(`Selected Segment: ${activeHoveredLine.name}`);
+                        updateInstructions();
+                        redrawDiagnosticWorkspace();
+                    }
+                }
+            };
+        }
+
+        // Distance from point (px, py) to line segment (x1, y1) -> (x2, y2)
+        function getDistanceToLineSegment(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            if (dx === 0 && dy === 0) return Math.hypot(px - x1, py - y1);
+            
+            const t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+            const clampedT = Math.max(0, Math.min(1, t));
+            
+            const closestX = x1 + clampedT * dx;
+            const closestY = y1 + clampedT * dy;
+            return Math.hypot(px - closestX, py - closestY);
+        }
+
+        // Redraw diagnostic workspace
+        function redrawDiagnosticWorkspace() {
+            if (!originalImageData) return;
+            const img = new Image();
+            img.src = originalImageData;
+            img.onload = () => {
+                analysisCanvas.width = img.width;
+                analysisCanvas.height = img.height;
+                aCtx.drawImage(img, 0, 0);
+
+                // Draw all derived anatomical reference lines behind interaction
+                drawBaseAnatomicalSkeleton();
+
+                // Highlight hovered segment
+                if (activeHoveredLine) {
+                    drawHighlightedSegment(activeHoveredLine, 'rgba(15, 118, 110, 0.45)', 12);
+                }
+
+                // Highlight chosen segments
+                selectedLines.forEach(seg => {
+                    drawHighlightedSegment(seg, 'rgba(15, 118, 110, 0.85)', 10);
+                });
+
+                // Highlight clinical Joint Center
+                if (selectedJointCenter) {
+                    const centerPoint = activeLoadedPose[selectedJointCenter.idx];
+                    if (centerPoint) {
+                        aCtx.fillStyle = '#f97316'; // orange joint marker
+                        aCtx.strokeStyle = '#ffffff';
+                        aCtx.lineWidth = 4;
+                        aCtx.shadowBlur = 6;
+                        aCtx.shadowColor = 'rgba(0,0,0,0.4)';
+                        aCtx.beginPath();
+                        aCtx.arc(centerPoint.x * analysisCanvas.width, centerPoint.y * analysisCanvas.height, 14, 0, 2 * Math.PI);
+                        aCtx.fill();
+                        aCtx.stroke();
+                        aCtx.shadowBlur = 0; // reset
+                    }
+                }
+
+                // Perform alignment angle evaluations & draw diagnostic overlays
+                performClinicalCalculations();
+            };
+        }
+
+        // Draw basic skeleton framework behind interactions
+        function drawBaseAnatomicalSkeleton() {
+            ANATOMICAL_SEGMENTS.forEach(seg => {
+                const pStart = activeLoadedPose[seg.start];
+                const pEnd = activeLoadedPose[seg.end];
+                if (pStart && pEnd && pStart.visibility > 0.15 && pEnd.visibility > 0.15) {
+                    aCtx.strokeStyle = 'rgba(15, 118, 110, 0.25)'; // faint background segment lines
+                    aCtx.lineWidth = 4;
+                    aCtx.beginPath();
+                    aCtx.moveTo(pStart.x * analysisCanvas.width, pStart.y * analysisCanvas.height);
+                    aCtx.lineTo(pEnd.x * analysisCanvas.width, pEnd.y * analysisCanvas.height);
+                    aCtx.stroke();
+
+                    // Soft anchor points
+                    aCtx.fillStyle = 'rgba(15, 118, 110, 0.5)';
+                    aCtx.beginPath();
+                    aCtx.arc(pStart.x * analysisCanvas.width, pStart.y * analysisCanvas.height, 4, 0, 2 * Math.PI);
+                    aCtx.arc(pEnd.x * analysisCanvas.width, pEnd.y * analysisCanvas.height, 4, 0, 2 * Math.PI);
+                    aCtx.fill();
+                }
             });
-            aCtx.shadowBlur = 10;
-            aCtx.shadowColor = '#14b8a6';
-            drawConnectors(aCtx, filtered, POSE_CONNECTIONS, { color: '#14b8a6', lineWidth: 3 });
-            aCtx.shadowBlur = 0;
-            drawLandmarks(aCtx, filtered.filter(l => l.visibility > 0.1), { color: '#ffffff', fillColor: '#0e7572', radius: 5 });
-            aCanvas.onclick = (e) => handlePointSelect(e, state.currentPoseDataForAnalysis, aCtx, aCanvas);
-        };
-    }
+        }
 
-    function undoSelection() {
-        if (state.selected.length === 0) return;
-        state.selected.pop();
-        resetAnalysis();
-        // Re-draw remaining selected points
-        const aCanvas = document.getElementById('analysis-canvas');
-        const aCtx = aCanvas.getContext('2d');
-        state.selected.forEach((lm, idx) => {
-            const cx = lm.x * aCanvas.width;
-            const cy = lm.y * aCanvas.height;
-            aCtx.fillStyle = '#f97316';
+        // Highlights selected/hovered segments
+        function drawHighlightedSegment(seg, color, width) {
+            const pStart = activeLoadedPose[seg.start];
+            const pEnd = activeLoadedPose[seg.end];
+            if (pStart && pEnd) {
+                aCtx.strokeStyle = color;
+                aCtx.lineWidth = width;
+                aCtx.lineCap = 'round';
+                aCtx.beginPath();
+                aCtx.moveTo(pStart.x * analysisCanvas.width, pStart.y * analysisCanvas.height);
+                aCtx.lineTo(pEnd.x * analysisCanvas.width, pEnd.y * analysisCanvas.height);
+                aCtx.stroke();
+            }
+        }
+
+        // Master clinical calculations and Goniometer graphics engine
+        function performClinicalCalculations() {
+            if (!selectedJointCenter) {
+                document.getElementById('angle-display').innerText = "Select Joint Center";
+                return;
+            }
+
+            const centerPt = activeLoadedPose[selectedJointCenter.idx];
+            const cx = centerPt.x * analysisCanvas.width;
+            const cy = centerPt.y * analysisCanvas.height;
+
+            if (currentAngleMode === 'segment-segment') {
+                if (selectedLines.length < 2) {
+                    document.getElementById('angle-display').innerText = `Select ${2 - selectedLines.length} Segments`;
+                    return;
+                }
+
+                // Evaluate angle between two segments
+                const seg1 = selectedLines[0];
+                const seg2 = selectedLines[1];
+
+                // Get vectors representing each segment relative to the selected joint center
+                const vec1 = getSegmentVector(seg1, selectedJointCenter.idx);
+                const vec2 = getSegmentVector(seg2, selectedJointCenter.idx);
+
+                let angle = Math.abs(Math.atan2(vec2.y, vec2.x) - Math.atan2(vec1.y, vec1.x)) * 180 / Math.PI;
+                angle = Math.min(angle, 360 - angle);
+
+                // Render goniometer arc
+                drawGoniometerArc(cx, cy, Math.atan2(vec1.y, vec1.x), Math.atan2(vec2.y, vec2.x), angle);
+
+                // Update text
+                const formattedName = `${selectedJointCenter.name} ROM`;
+                document.getElementById('angle-display').innerHTML = `
+                    <span class="text-xs uppercase tracking-wider text-slate-500 font-bold block">${formattedName}:</span>
+                    <span class="text-2xl font-black text-[#ea580c]">${angle.toFixed(1)}°</span>
+                `;
+
+            } else if (currentAngleMode === 'segment-vertical') {
+                if (selectedLines.length < 1) {
+                    document.getElementById('angle-display').innerText = "Select Segment";
+                    return;
+                }
+
+                const seg = selectedLines[0];
+                const vec = getSegmentVector(seg, selectedJointCenter.idx);
+
+                // Vertical reference vector (gravity axis, pointing straight up vs downward based on dynamic state)
+                const refVec = { x: 0, y: referenceDirection === 'positive' ? -1 : 1 };
+
+                let angle = Math.abs(Math.atan2(vec.y, vec.x) - Math.atan2(refVec.y, refVec.x)) * 180 / Math.PI;
+                angle = Math.min(angle, 360 - angle);
+                if (angle > 90) angle = 180 - angle; // Clinically reference acute alignment angle
+
+                // Draw dashed vertical plumb line
+                drawReferenceAxis(cx, cy, 'vertical');
+
+                // Draw arc to reference vertical
+                drawGoniometerArc(cx, cy, Math.atan2(refVec.y, refVec.x), Math.atan2(vec.y, vec.x), angle);
+
+                document.getElementById('angle-display').innerHTML = `
+                    <span class="text-xs uppercase tracking-wider text-slate-500 font-bold block">${seg.name} Lean (Spine/Spinal):</span>
+                    <span class="text-2xl font-black text-[#0f766e]">${angle.toFixed(1)}°</span>
+                `;
+
+            } else if (currentAngleMode === 'segment-horizontal') {
+                if (selectedLines.length < 1) {
+                    document.getElementById('angle-display').innerText = "Select Segment";
+                    return;
+                }
+
+                const seg = selectedLines[0];
+                const vec = getSegmentVector(seg, selectedJointCenter.idx);
+
+                // Horizontal reference axis (pointing directly right vs left based on dynamic state)
+                const refVec = { x: referenceDirection === 'positive' ? 1 : -1, y: 0 };
+
+                let angle = Math.abs(Math.atan2(vec.y, vec.x) - Math.atan2(refVec.y, refVec.x)) * 180 / Math.PI;
+                angle = Math.min(angle, 360 - angle);
+                if (angle > 90) angle = 180 - angle; 
+
+                // Draw dashed horizontal level axis
+                drawReferenceAxis(cx, cy, 'horizontal');
+
+                // Draw arc to reference horizontal
+                drawGoniometerArc(cx, cy, Math.atan2(refVec.y, refVec.x), Math.atan2(vec.y, vec.x), angle);
+
+                document.getElementById('angle-display').innerHTML = `
+                    <span class="text-xs uppercase tracking-wider text-slate-500 font-bold block">${seg.name} Abduction/Flexion:</span>
+                    <span class="text-2xl font-black text-[#0f766e]">${angle.toFixed(1)}°</span>
+                `;
+            }
+        }
+
+        // Helper to orient a segment's vector relative to the selected joint center
+        function getSegmentVector(seg, centerIdx) {
+            const pStart = activeLoadedPose[seg.start];
+            const pEnd = activeLoadedPose[seg.end];
+
+            // Determine orientation: vector should start at joint center and point outwards
+            if (seg.start === centerIdx) {
+                return { x: pEnd.x - pStart.x, y: pEnd.y - pStart.y };
+            } else if (seg.end === centerIdx) {
+                return { x: pStart.x - pEnd.x, y: pStart.y - pEnd.y };
+            } else {
+                // If the selected segment is not directly connected, orient it relative to coordinates
+                return { x: pEnd.x - pStart.x, y: pEnd.y - pStart.y };
+            }
+        }
+
+        // Draw dashed level or plumb line axis
+        function drawReferenceAxis(cx, cy, direction) {
+            aCtx.strokeStyle = 'rgba(15, 118, 110, 0.6)';
+            aCtx.lineWidth = 2;
+            aCtx.setLineDash([6, 6]);
+            
             aCtx.beginPath();
-            aCtx.arc(cx, cy, 14, 0, Math.PI * 2);
+            if (direction === 'vertical') {
+                const yFactor = referenceDirection === 'positive' ? -180 : 180;
+                aCtx.moveTo(cx, cy);
+                aCtx.lineTo(cx, cy + yFactor);
+            } else {
+                const xFactor = referenceDirection === 'positive' ? 180 : -180;
+                aCtx.moveTo(cx, cy);
+                aCtx.lineTo(cx + xFactor, cy);
+            }
+            aCtx.stroke();
+            aCtx.setLineDash([]); // reset to solid
+        }
+
+        // Draw curvature angle arc on joint center
+        function drawGoniometerArc(cx, cy, startAngle, endAngle, angleVal) {
+            aCtx.strokeStyle = '#f97316';
+            aCtx.lineWidth = 4;
+            aCtx.setLineDash([]);
+            
+            // Adjust endAngle if necessary to trace arc correctly
+            aCtx.beginPath();
+            aCtx.arc(cx, cy, 45, startAngle, endAngle);
+            aCtx.stroke();
+
+            // Calculate anchor coords to place floating goniometer label box
+            const textAngle = startAngle + (endAngle - startAngle) / 2;
+            const textX = cx + 70 * Math.cos(textAngle);
+            const textY = cy + 70 * Math.sin(textAngle);
+
+            // Label backing
+            aCtx.fillStyle = 'rgba(15, 23, 42, 0.9)'; // Dark clinical slate
+            aCtx.shadowBlur = 4;
+            aCtx.shadowColor = 'rgba(0,0,0,0.2)';
+            
+            const labelText = `${angleVal.toFixed(1)}°`;
+            aCtx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+            const textWidth = aCtx.measureText(labelText).width + 12;
+
+            aCtx.beginPath();
+            aCtx.roundRect(textX - textWidth/2, textY - 11, textWidth, 22, 5);
             aCtx.fill();
-            aCtx.fillStyle = 'white';
-            aCtx.font = 'bold 12px DM Sans, sans-serif';
+            aCtx.shadowBlur = 0; // reset
+
+            // Text string
+            aCtx.fillStyle = '#ffffff';
             aCtx.textAlign = 'center';
             aCtx.textBaseline = 'middle';
-            aCtx.fillText(idx + 1, cx, cy);
-        });
-        document.getElementById('angle-display').textContent = state.selected.length === 0 ? 'Select 3 points' : `Point ${state.selected.length}/3 selected`;
-    }
+            aCtx.fillText(labelText, textX, textY);
+        }
 
-    function downloadAnalysis() {
-        const aCanvas = document.getElementById('analysis-canvas');
-        if (!aCanvas || aCanvas.width === 0) return;
-        const a = document.createElement('a');
-        a.download = 'analysed-assessment.png';
-        a.href = aCanvas.toDataURL();
-        a.click();
-    }
+        // Redraw whole workspace view upon undo or reset
+        function undoSelection() {
+            if (selectedLines.length > 0) {
+                selectedLines.pop();
+                showToast("Last segment selection removed");
+            } else if (selectedJointCenter) {
+                selectedJointCenter = null;
+                showToast("Joint Center selection removed");
+            } else {
+                showToast("No active alignments to undo");
+                return;
+            }
+            redrawDiagnosticWorkspace();
+            updateInstructions();
+        }
 
-    function vergetAnalysis() {
-        // Placeholder for Verget Analysis feature
-        alert('Verget Analysis: Feature available in clinical mode.');
-    }
+        // Clear diagnostic markers on current frame
+        function resetAnalysis() {
+            selectedJointCenter = null;
+            selectedLines = [];
+            activeHoveredLine = null;
+            redrawDiagnosticWorkspace();
+            updateInstructions();
+            showToast("Diagnostic alignment reset.");
+        }
 
-    function updateStatusBar() {
-        document.getElementById('landmark-count').textContent = `Landmark Data storage: ${state.totalLandmarks}`;
-        const kb = (state.totalDataBytes / 1024).toFixed(0);
-        document.getElementById('data-size').textContent = `· data: ${kb} KB`;
-    }
+        // Delete Captured assessment frame
+        function deleteAssessment(id) {
+            document.getElementById(`card_${id}`).remove();
+            delete poseDataHistory[id];
+            
+            // Check if gallery empty
+            const remaining = Object.keys(poseDataHistory).length;
+            if (remaining === 0) {
+                document.getElementById('captured-placeholder').classList.remove('hidden');
+                document.getElementById('grid').classList.add('hidden');
+                document.getElementById('empty-workspace-state').classList.remove('hidden');
+                analysisCanvas.classList.add('hidden');
+                activeLoadedPose = null;
+            }
+            updateSideThumbnailStrip();
+            updateInstructions();
+            showToast("Assessment removed");
+        }
 
-    // roundRect polyfill
-    if (!CanvasRenderingContext2D.prototype.roundRect) {
-        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-            this.beginPath();
-            this.moveTo(x + r, y);
-            this.lineTo(x + w - r, y);
-            this.quadraticCurveTo(x + w, y, x + w, y + r);
-            this.lineTo(x + w, y + h - r);
-            this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-            this.lineTo(x + r, y + h);
-            this.quadraticCurveTo(x, y + h, x, y + h - r);
-            this.lineTo(x, y + r);
-            this.quadraticCurveTo(x, y, x + r, y);
-            this.closePath();
-            return this;
-        };
-    }
-</script>
+        // Download helper directly bypassing canvas
+        function downloadDirectly(src) {
+            const link = document.createElement('a');
+            link.download = 'captured-assessment.png';
+            link.href = src;
+            link.click();
+        }
+
+        // Download compiled analysed assessment canvas diagram
+        function downloadAnalysis() {
+            if (!originalImageData) {
+                showToast("Workspace canvas is empty!");
+                return;
+            }
+            const link = document.createElement('a');
+            link.download = 'clinical-posture-report.png';
+            link.href = analysisCanvas.toDataURL();
+            link.click();
+        }
+
+        // Update Right side comparative timeline list
+        function updateSideThumbnailStrip() {
+            const strip = document.getElementById('side-thumbnail-strip');
+            strip.innerHTML = '';
+            
+            const ids = Object.keys(poseDataHistory);
+            if (ids.length === 0) {
+                strip.innerHTML = `
+                    <div class="text-center py-8 text-slate-300 text-xs font-medium my-auto flex flex-col gap-1.5 justify-center items-center w-full">
+                        <i class="fa-solid fa-list-check text-lg"></i>
+                        <span>No ROM data</span>
+                    </div>
+                `;
+                return;
+            }
+
+            ids.forEach(id => {
+                const imgSource = document.querySelector(`#card_${id} img`)?.src;
+                if (imgSource) {
+                    const thumb = document.createElement('div');
+                    thumb.className = "cursor-pointer rounded-lg border-2 border-transparent hover:border-[#0f766e] transition duration-200 overflow-hidden relative shadow-sm h-16 w-full flex-shrink-0";
+                    thumb.onclick = () => loadToWorkspace(id, imgSource);
+                    thumb.innerHTML = `
+                        <img src="${imgSource}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition duration-200"></div>
+                    `;
+                    strip.appendChild(thumb);
+                }
+            });
+        }
+    </script>
 </body>
 </html>
