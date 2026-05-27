@@ -353,7 +353,7 @@
         let poseDataHistory = {}; // Keep trace of pose data for snapshots
         
         // --- CLINICAL ROM STATE ENGINE ---
-        let selectedJointCenter = null;   // e.g., elbow, shoulder, knee
+        let selectedJointCenter = null;   // e.g., elbow, shoulder, knee, neck
         let selectedLines = [];           // array of selected line segments
         let currentAngleMode = 'segment-segment'; // segment-segment, segment-vertical, segment-horizontal
         let referenceDirection = 'positive'; // 'positive' (up/right) or 'negative' (down/left)
@@ -379,11 +379,20 @@
             { id: 'right-hand', name: 'Right Hand (MCP Vector)', start: 16, end: 20 },
             { id: 'left-hand', name: 'Left Hand (MCP Vector)', start: 15, end: 19 },
             { id: 'right-foot', name: 'Right Foot Segment', start: 28, end: 32 },
-            { id: 'left-foot', name: 'Left Foot Segment', start: 27, end: 31 }
+            { id: 'left-foot', name: 'Left Foot Segment', start: 27, end: 31 },
+
+            // Neck & Head Segments for Cervical Spine Goniometry
+            { id: 'neck-right', name: 'Right Cervical Axis (Ear-Shoulder)', start: 8, end: 12 },
+            { id: 'neck-left', name: 'Left Cervical Axis (Ear-Shoulder)', start: 7, end: 11 },
+            { id: 'head-lateral-right', name: 'Head Lateral Axis (Nose-Ear R)', start: 0, end: 8 },
+            { id: 'head-lateral-left', name: 'Head Lateral Axis (Nose-Ear L)', start: 0, end: 7 }
         ];
 
         // Core tracking points list that can act as joint centers
         const CLINICAL_JOINT_CENTERS = [
+            { idx: 0, name: "Nose (Cervical Landmark)" },
+            { idx: 7, name: "Left Ear (Cervical Center)" },
+            { idx: 8, name: "Right Ear (Cervical Center)" },
             { idx: 11, name: "Left Shoulder" },
             { idx: 12, name: "Right Shoulder" },
             { idx: 13, name: "Left Elbow" },
@@ -401,6 +410,41 @@
         // Master Clinical Goniometry Protocol Database
         // Structured for direct use in the selectable anatomical-line calculations
         const CLINICAL_PROTOCOLS = {
+            "cervical": {
+                name: "Cervical Spine (Neck)",
+                movements: [
+                    {
+                        movement: "Cervical Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Cervical Center (Ear focus)", landmark: [7, 8] },
+                        proximal_segment_line: { name: "Vertical Reference Line", landmarks: [] },
+                        distal_segment_line: { name: "Right Cervical Axis (Ear-Shoulder)", landmarks: ["neck-right", "neck-left"] }, 
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 45° (Flexion), 0° - 45° (Extension)",
+                        clinical_notes: "Measure displacement of the neck axis relative to a vertical plumb reference."
+                    },
+                    {
+                        movement: "Cervical Lateral Flexion",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Shoulder Alignment Midpoint", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Vertical Spine Reference Line", landmarks: [] },
+                        distal_segment_line: { name: "Head Lateral Axis", landmarks: ["head-lateral-right", "head-lateral-left"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Anterior / Posterior",
+                        normal_rom: "0° - 45°",
+                        clinical_notes: "Align using ear-to-ear or nose-to-ear vectors against plumb line."
+                    }
+                ]
+            },
             "shoulder": {
                 name: "Shoulder",
                 movements: [
@@ -523,41 +567,6 @@
                         recommended_camera_view: "Anterior (palmar surface)",
                         normal_rom: "0° - 20° (Radial), 0° - 30° (Ulnar)",
                         clinical_notes: "Measure deviation of the hand vector relative to forearm line."
-                    }
-                ]
-            },
-            "cervical": {
-                name: "Cervical Spine",
-                movements: [
-                    {
-                        movement: "Cervical Flexion / Extension",
-                        movement_plane: "Sagittal",
-                        measurement_type: "segment-vertical",
-                        axis: { name: "Shoulder Center (Ear/Nose focus)", landmark: [11, 12] },
-                        proximal_segment_line: { name: "Vertical Reference Line", landmarks: [] },
-                        distal_segment_line: { name: "Ear-Nose Axis", landmarks: ["collar-alignment"] }, 
-                        reference_type: "segment-vertical",
-                        requires_vertical_reference: true,
-                        requires_horizontal_reference: false,
-                        requires_perpendicular_generation: true,
-                        recommended_camera_view: "Lateral",
-                        normal_rom: "0° - 45° (Flexion), 0° - 45° (Extension)",
-                        clinical_notes: "Ensure the upper trunk doesn't participate in forward sagittal lean."
-                    },
-                    {
-                        movement: "Cervical Lateral Flexion",
-                        movement_plane: "Frontal",
-                        measurement_type: "segment-vertical",
-                        axis: { name: "Shoulder Alignment Midpoint", landmark: [11, 12] },
-                        proximal_segment_line: { name: "Vertical Spine Reference Line", landmarks: [] },
-                        distal_segment_line: { name: "Neck Axis", landmarks: ["collar-alignment"] },
-                        reference_type: "segment-vertical",
-                        requires_vertical_reference: true,
-                        requires_horizontal_reference: false,
-                        requires_perpendicular_generation: true,
-                        recommended_camera_view: "Anterior / Posterior",
-                        normal_rom: "0° - 45°",
-                        clinical_notes: "Align with the vertical line of the cervical vertebrae."
                     }
                 ]
             },
@@ -842,7 +851,11 @@
 
                 // Eliminate face (0-10) and hands/palms tips if configured off
                 const filtered = currentData.map((lm, i) => {
-                    if (i <= 10) return { ...lm, visibility: 0 }; // Remove face
+                    if (i <= 10) {
+                        // Allow neck goniometry (ears, nose: indices 0, 7, 8) to retain tracking points visibility
+                        if ([0, 7, 8].includes(i)) return lm;
+                        return { ...lm, visibility: 0 }; // Remove rest of face
+                    }
                     if (!showPalms && [17, 19, 21, 18, 20, 22].includes(i)) return { ...lm, visibility: 0 }; // Hide palm tips
                     return lm;
                 });
@@ -1066,11 +1079,11 @@
                 if (!selectedJointCenter) {
                     CLINICAL_JOINT_CENTERS.forEach(jc => {
                         const pt = activeLoadedPose[jc.idx];
-                        if (pt && pt.visibility > 0.15) {
+                        if (pt) {
                             const d = Math.hypot(pt.x - mouseX, pt.y - mouseY);
                             
-                            // Optimized snap tolerance window for smaller joints (wrist/ankle/fingers/TMJ)
-                            const maxDist = [15, 16, 27, 28, 7, 8].includes(jc.idx) ? 0.08 : 0.04;
+                            // Optimized snap tolerance window for smaller joints (wrist/ankle/fingers/TMJ/cervical ears)
+                            const maxDist = [0, 7, 8, 15, 16, 27, 28].includes(jc.idx) ? 0.08 : 0.04;
                             
                             if (d < maxDist) {
                                 analysisCanvas.style.cursor = 'pointer';
@@ -1088,7 +1101,7 @@
                     ANATOMICAL_SEGMENTS.forEach(seg => {
                         const pStart = activeLoadedPose[seg.start];
                         const pEnd = activeLoadedPose[seg.end];
-                        if (pStart && pEnd && pStart.visibility > 0.15 && pEnd.visibility > 0.15) {
+                        if (pStart && pEnd) {
                             // Calculate distance from point to line segment
                             const dist = getDistanceToLineSegment(mouseX, mouseY, pStart.x, pStart.y, pEnd.x, pEnd.y);
                             if (dist < bestDist) {
@@ -1118,12 +1131,12 @@
                 // If no joint center selected, evaluate selection of joint center first
                 if (!selectedJointCenter) {
                     let chosenJoint = null;
-                    let bestDist = 0.04;
+                    let bestDist = 1.0;
                     CLINICAL_JOINT_CENTERS.forEach(jc => {
                         const pt = activeLoadedPose[jc.idx];
-                        if (pt && pt.visibility > 0.15) {
+                        if (pt) {
                             const d = Math.hypot(pt.x - clickX, pt.y - clickY);
-                            const snapDist = [15, 16, 27, 28, 7, 8].includes(jc.idx) ? 0.08 : 0.04;
+                            const snapDist = [0, 7, 8, 15, 16, 27, 28].includes(jc.idx) ? 0.08 : 0.04;
                             if (d < snapDist && d < bestDist) {
                                 bestDist = d;
                                 chosenJoint = jc;
@@ -1232,7 +1245,7 @@
             ANATOMICAL_SEGMENTS.forEach(seg => {
                 const pStart = activeLoadedPose[seg.start];
                 const pEnd = activeLoadedPose[seg.end];
-                if (pStart && pEnd && pStart.visibility > 0.15 && pEnd.visibility > 0.15) {
+                if (pStart && pEnd && pStart.visibility > 0.1 && pEnd.visibility > 0.1) {
                     aCtx.strokeStyle = 'rgba(15, 118, 110, 0.25)'; // faint background segment lines
                     aCtx.lineWidth = 4;
                     aCtx.beginPath();
@@ -1401,15 +1414,22 @@
             aCtx.lineWidth = 4;
             aCtx.setLineDash([]);
             
-            // Adjust endAngle if necessary to trace arc correctly
+            // Normalize angular difference to always sweep the shortest interior path (<= 180 degrees)
+            let diff = endAngle - startAngle;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            
+            const sweepEnd = startAngle + diff;
+
             aCtx.beginPath();
-            aCtx.arc(cx, cy, 45, startAngle, endAngle);
+            // Draw arc along shortest path (counterclockwise if diff < 0)
+            aCtx.arc(cx, cy, 45, startAngle, sweepEnd, diff < 0);
             aCtx.stroke();
 
-            // Calculate anchor coords to place floating goniometer label box
-            const textAngle = startAngle + (endAngle - startAngle) / 2;
-            const textX = cx + 70 * Math.cos(textAngle);
-            const textY = cy + 70 * Math.sin(textAngle);
+            // Calculate anchor coords to place floating goniometer label box at bisection angle
+            const midAngle = startAngle + diff / 2;
+            const textX = cx + 70 * Math.cos(midAngle);
+            const textY = cy + 70 * Math.sin(midAngle);
 
             // Label backing
             aCtx.fillStyle = 'rgba(15, 23, 42, 0.9)'; // Dark clinical slate
