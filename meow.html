@@ -334,8 +334,8 @@
                     ctx.shadowBlur = 0;
                 }
 
-                // Smooth teal body lines
-                drawConnectors(ctx, filtered, POSE_CONNECTIONS, { color: '#0f766e', lineWidth: 4 });
+                // Smooth white body lines (thicker for high clinical visibility)
+                drawConnectors(ctx, filtered, POSE_CONNECTIONS, { color: '#ffffff', lineWidth: 6 });
                 
                 // Draw joint tracking points (if selected toggle)
                 if (showDots) {
