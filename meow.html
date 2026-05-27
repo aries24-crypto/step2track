@@ -3,193 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Step2Track | Posture & Recovery Assessment</title>
+    <title>Step2Track | Advanced Clinical Assessment</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
     <style>
-        .branding-font { color: #0f766e; }
-        .tagline-font { color: #ea580c; font-style: italic; }
+        .gradient-teal { background: linear-gradient(135deg, #0f766e, #115e59); }
+        .bg-clinical { background-color: #f8fafc; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col font-sans text-gray-800 pb-20">
+<body class="bg-clinical text-slate-800 font-sans pb-20">
 
-    <header class="bg-white border-b border-gray-200 p-4 shadow-sm">
-        <div class="max-w-5xl mx-auto flex items-center justify-between">
+    <header class="bg-white border-b border-slate-200 py-4 px-6 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center overflow-hidden border border-gray-300">
-                    <i class="fa-solid fa-heart-pulse text-teal-700"></i>
+                <div class="w-12 h-12 gradient-teal rounded-xl flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-chart-line text-white text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-2xl font-bold branding-font">Step2Track</h1>
-                    <p class="tagline-font text-sm">where every step matters</p>
+                    <h1 class="text-2xl font-black text-slate-900 tracking-tight">Step2Track</h1>
+                    <p class="text-[10px] tracking-widest text-teal-700 font-bold uppercase">Clinical ROM Assessment Suite</p>
                 </div>
             </div>
-            <div class="text-sm font-medium text-teal-700 bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
-                <i class="fa-solid fa-circle-dot animate-pulse mr-2"></i> System Active
+            <div class="flex items-center gap-2 bg-teal-50 px-4 py-2 rounded-full text-teal-800 font-semibold text-sm">
+                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span></span>
+                System Active
             </div>
         </div>
     </header>
 
-    <main class="flex-grow flex flex-col items-center p-4 gap-8">
-        <section class="w-full max-w-5xl flex flex-col gap-6">
-            <div class="relative rounded-2xl bg-gray-900 shadow-xl overflow-hidden aspect-video border-4 border-white ring-1 ring-gray-200">
-                <div id="loading-overlay" class="absolute inset-0 bg-gray-100 flex flex-col items-center justify-center z-50">
-                    <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-teal-600 mb-4"></div>
-                    <p class="text-gray-600 font-medium">Initializing camera...</p>
-                </div>
-                <video id="input-video" class="hidden" playsinline muted></video>
-                <canvas id="output-canvas" class="w-full h-full object-cover"></canvas>
+    <main class="max-w-7xl mx-auto p-6 flex flex-col gap-8">
+        <section class="grid lg:grid-cols-3 gap-8">
+            <div class="lg:col-span-2 relative rounded-2xl bg-slate-950 shadow-2xl overflow-hidden aspect-video border-4 border-slate-800">
+                <div id="loading" class="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-400">Initializing Tracking System...</div>
+                <video id="video" class="hidden" playsinline muted></video>
+                <canvas id="canvas" class="w-full h-full object-cover"></canvas>
             </div>
-
-            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 flex flex-wrap gap-6 items-center justify-between">
-                <div class="flex flex-wrap gap-6">
-                    <label class="flex items-center gap-2 cursor-pointer font-medium hover:text-teal-700 transition">
-                        <input type="checkbox" id="toggle-palm" checked class="accent-teal-700 w-5 h-5"> Palm Landmarks
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer font-medium hover:text-teal-700 transition">
-                        <input type="checkbox" id="toggle-glow" checked class="accent-teal-700 w-5 h-5"> Skeletal Glow
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer font-medium hover:text-teal-700 transition">
-                        <input type="checkbox" id="toggle-joints" checked class="accent-teal-700 w-5 h-5"> Joint Dots
-                    </label>
+            
+            <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <h2 class="font-bold text-slate-900 text-lg flex items-center gap-2 border-b pb-4"><i class="fa-solid fa-gear text-teal-700"></i> Assessment Settings</h2>
+                <div class="space-y-4">
+                    <label class="flex items-center justify-between cursor-pointer"><span>Include Palms</span> <input type="checkbox" id="ctrl-palm" checked class="w-5 h-5 accent-teal-700"></label>
+                    <label class="flex items-center justify-between cursor-pointer"><span>Skeletal Glow</span> <input type="checkbox" id="ctrl-glow" checked class="w-5 h-5 accent-teal-700"></label>
+                    <button id="capture-btn" class="w-full mt-6 bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95">
+                        <i class="fa-solid fa-camera"></i> Capture Frame
+                    </button>
                 </div>
-                <button id="capture-btn" class="bg-teal-700 hover:bg-teal-800 text-white px-6 py-2 rounded-lg font-bold transition shadow-md flex items-center gap-2">
-                    <i class="fa-solid fa-camera"></i> Capture Assessment
-                </button>
             </div>
         </section>
 
-        <section id="captured-section" class="w-full max-w-5xl hidden">
-            <h2 class="text-xl font-bold text-gray-700 mb-4 flex items-center gap-2">
-                <i class="fa-solid fa-images text-teal-700"></i> Captured Assessments
+        <section id="captured-container" class="hidden">
+            <h2 class="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                <i class="fa-solid fa-folder-open text-teal-700"></i> Captured History
             </h2>
-            <div id="assessments-grid" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            <div id="grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
         </section>
     </main>
 
-    <!-- Analysis Modal -->
-    <div id="analysis-modal" class="hidden fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl max-w-4xl w-full p-4 relative">
-            <button onclick="closeModal()" class="absolute -top-10 right-0 text-white text-xl"><i class="fa-solid fa-times"></i></button>
-            <div id="canvas-container" class="relative cursor-crosshair">
-                <canvas id="analysis-canvas" class="w-full h-auto rounded"></canvas>
+    <div id="modal" class="fixed inset-0 z-50 bg-slate-900/95 hidden flex items-center justify-center p-6">
+        <div class="bg-white w-full max-w-5xl rounded-2xl overflow-hidden flex flex-col shadow-2xl h-[90vh]">
+            <div class="p-5 border-b flex justify-between items-center bg-slate-50">
+                <h3 class="font-black text-slate-900 text-lg">ROM Analysis Assessment</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-900 text-2xl transition">&times;</button>
             </div>
-            <div class="mt-4 flex gap-4">
-                <button onclick="calculateAngle()" class="bg-teal-700 text-white px-4 py-2 rounded">Calculate Angle</button>
-                <button onclick="resetAnalysis()" class="bg-gray-200 px-4 py-2 rounded">Reset Points</button>
+            <div class="flex-grow overflow-auto p-6 bg-slate-100 flex items-center justify-center">
+                <canvas id="analysis-canvas" class="max-w-full shadow-2xl rounded-lg cursor-crosshair"></canvas>
             </div>
-            <div id="angle-result" class="mt-2 text-xl font-bold text-teal-800"></div>
+            <div class="p-6 border-t flex gap-4 items-center bg-white">
+                <button onclick="resetAnalysis()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-700 transition">Reset Analysis</button>
+                <button onclick="downloadAnalysis()" class="px-6 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold transition shadow-lg">Download Analysed</button>
+                <div id="angle-display" class="ml-auto font-black text-2xl text-teal-800 bg-teal-50 px-6 py-2 rounded-lg border border-teal-200">Select 3 points</div>
+            </div>
         </div>
     </div>
 
     <script>
-        const video = document.getElementById('input-video');
-        const canvas = document.getElementById('output-canvas');
-        const ctx = canvas.getContext('2d');
-        const assessmentsGrid = document.getElementById('assessments-grid');
-        const capturedSection = document.getElementById('captured-section');
-        let currentPoseData = null;
+        const video = document.getElementById('video'), canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
+        const pose = new Pose({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`});
+        pose.setOptions({modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.6});
+        
+        let currentData = null;
+        let originalImageData = null;
 
-        const pose = new Pose({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}` });
-        pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
-
-        pose.onResults((results) => {
-            document.getElementById('loading-overlay').style.display = 'none';
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pose.onResults(results => {
+            document.getElementById('loading').classList.add('hidden');
+            ctx.clearRect(0,0, canvas.width, canvas.height);
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-            if (results.poseLandmarks) {
-                currentPoseData = results.poseLandmarks;
-                const filtered = currentPoseData.map((lm, idx) => (idx >= 17 && idx <= 22 && !document.getElementById('toggle-palm').checked) ? { ...lm, visibility: 0 } : lm);
-                const connections = POSE_CONNECTIONS.filter(c => document.getElementById('toggle-palm').checked || (c[0] < 17 && c[1] < 17));
+            if(results.poseLandmarks) {
+                currentData = results.poseLandmarks;
+                // Exclude face (0-10)
+                const filtered = currentData.map((lm, i) => (i <= 10) ? {...lm, visibility: 0} : lm);
                 
-                if (document.getElementById('toggle-glow').checked) { ctx.shadowBlur = 10; ctx.shadowColor = '#0d9488'; }
-                drawConnectors(ctx, filtered, connections, {color: '#0d9488', lineWidth: 4});
-                if (document.getElementById('toggle-joints').checked) drawLandmarks(ctx, filtered.filter(lm => lm.visibility > 0.5), {color: '#f97316', lineWidth: 2, radius: 4});
+                if(document.getElementById('ctrl-glow').checked) { ctx.shadowBlur = 10; ctx.shadowColor = '#0d9488'; }
+                drawConnectors(ctx, filtered, POSE_CONNECTIONS, {color: '#ffffff', lineWidth: 4});
+                drawLandmarks(ctx, filtered.filter(l => l.visibility > 0.1), {color: '#ffffff', radius: 5});
                 ctx.shadowBlur = 0;
             }
         });
 
-        async function initCamera() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                video.onloadedmetadata = () => {
-                    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                    video.play();
-                    const frame = async () => { await pose.send({image: video}); requestAnimationFrame(frame); };
-                    frame();
-                };
-            } catch (err) { document.getElementById('loading-overlay').innerHTML = "<p class='text-red-600'>Camera access denied.</p>"; }
-        }
-
-        document.getElementById('capture-btn').addEventListener('click', () => {
-            if (!currentPoseData) return;
-            capturedSection.classList.remove('hidden');
-            const dataUrl = canvas.toDataURL();
-            const id = Date.now();
-            const card = document.createElement('div');
-            card.className = "bg-white p-4 rounded-xl border border-gray-200 shadow-sm";
-            card.innerHTML = `
-                <img src="${dataUrl}" class="w-full rounded mb-3">
-                <div class="flex gap-2">
-                    <button onclick="openAssessment('${dataUrl}', ${JSON.stringify(currentPoseData).replace(/"/g, '&quot;')})" class="flex-1 bg-teal-600 text-white py-2 rounded text-sm">View</button>
-                    <button onclick="this.closest('div.bg-white').remove()" class="bg-red-50 text-red-600 px-3 py-2 rounded"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            `;
-            assessmentsGrid.prepend(card);
+        navigator.mediaDevices.getUserMedia({video: true}).then(s => {
+            video.srcObject = s; video.play();
+            const loop = async () => { await pose.send({image: video}); requestAnimationFrame(loop); };
+            video.onloadedmetadata = () => { canvas.width = video.videoWidth; canvas.height = video.videoHeight; loop(); };
         });
 
-        let activePoints = [];
-        let activePose = null;
+        document.getElementById('capture-btn').onclick = () => {
+            if(!currentData) return;
+            document.getElementById('captured-container').classList.remove('hidden');
+            const data = canvas.toDataURL();
+            const div = document.createElement('div');
+            div.className = "bg-white p-3 rounded-2xl border shadow-md hover:shadow-xl transition";
+            div.innerHTML = `<img src="${data}" class="rounded-lg w-full mb-3 aspect-video object-cover"> 
+                             <button onclick="viewAssessment('${data}', ${JSON.stringify(currentData).replace(/"/g, '&quot;')})" class="w-full py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-sm font-bold shadow-md">Analyse Now</button>`;
+            document.getElementById('grid').prepend(div);
+        };
 
-        function openAssessment(imgSrc, poseData) {
-            activePose = poseData;
-            activePoints = [];
-            const modal = document.getElementById('analysis-modal');
-            const aCanvas = document.getElementById('analysis-canvas');
-            const aCtx = aCanvas.getContext('2d');
-            const img = new Image();
+        function viewAssessment(src, poseData) {
+            originalImageData = src;
+            const modal = document.getElementById('modal'), aCanvas = document.getElementById('analysis-canvas');
+            const aCtx = aCanvas.getContext('2d'), img = new Image();
+            img.src = src;
             img.onload = () => {
-                aCanvas.width = img.width; aCanvas.height = img.height;
-                aCtx.drawImage(img, 0, 0);
+                aCanvas.width = img.width; aCanvas.height = img.height; aCtx.drawImage(img, 0, 0);
+                aCanvas.onclick = (e) => handlePointSelect(e, poseData, aCtx, aCanvas);
             };
-            img.src = imgSrc;
             modal.classList.remove('hidden');
-            aCanvas.onclick = (e) => {
-                const rect = aCanvas.getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width;
-                const y = (e.clientY - rect.top) / rect.height;
-                let closest = { dist: 0.05, idx: -1 };
-                activePose.forEach((lm, i) => {
-                    const d = Math.sqrt(Math.pow(lm.x - x, 2) + Math.pow(lm.y - y, 2));
-                    if (d < closest.dist) closest = { dist: d, idx: i };
-                });
-                if (closest.idx !== -1 && activePoints.length < 3) {
-                    activePoints.push(activePose[closest.idx]);
-                    aCtx.fillStyle = 'orange';
-                    aCtx.beginPath(); aCtx.arc(activePose[closest.idx].x * aCanvas.width, activePose[closest.idx].y * aCanvas.height, 10, 0, Math.PI*2); aCtx.fill();
-                }
-            };
         }
 
-        function calculateAngle() {
-            if (activePoints.length < 3) return;
-            const [p1, p2, p3] = activePoints;
-            const v1 = { x: p1.x - p2.x, y: p1.y - p2.y };
-            const v2 = { x: p3.x - p2.x, y: p3.y - p2.y };
-            const dot = v1.x * v2.x + v1.y * v2.y;
-            const mag1 = Math.sqrt(v1.x**2 + v1.y**2);
-            const mag2 = Math.sqrt(v2.x**2 + v2.y**2);
-            const angle = Math.acos(dot / (mag1 * mag2)) * (180 / Math.PI);
-            document.getElementById('angle-result').innerText = `Angle: ${angle.toFixed(1)}°`;
+        let selected = [];
+        function handlePointSelect(e, poseData, ctx, can) {
+            if(selected.length >= 3) return;
+            const rect = can.getBoundingClientRect();
+            const x = (e.clientX - rect.left) / rect.width, y = (e.clientY - rect.top) / rect.height;
+            let best = {d: 0.08, i: -1};
+            poseData.forEach((p, i) => { if(i > 10) { const dist = Math.hypot(p.x - x, p.y - y); if(dist < best.d) best = {d: dist, i}; }});
+            if(best.i !== -1) {
+                selected.push(poseData[best.i]);
+                ctx.fillStyle = '#ea580c'; ctx.beginPath(); ctx.arc(poseData[best.i].x * can.width, poseData[best.i].y * can.height, 15, 0, 7); ctx.fill();
+                if(selected.length === 3) drawAngle(ctx, can);
+            }
         }
 
-        function closeModal() { document.getElementById('analysis-modal').classList.add('hidden'); }
-        function resetAnalysis() { activePoints = []; document.getElementById('angle-result').innerText = ''; }
+        function drawAngle(ctx, can) {
+            const [p1, p2, p3] = selected;
+            const angle = Math.abs(Math.atan2(p3.y-p2.y, p3.x-p2.x) - Math.atan2(p1.y-p2.y, p1.x-p2.x)) * 180 / Math.PI;
+            document.getElementById('angle-display').innerText = `${Math.min(angle, 360-angle).toFixed(1)}°`;
+            ctx.strokeStyle = '#ea580c'; ctx.lineWidth = 8; ctx.beginPath();
+            ctx.moveTo(p2.x*can.width, p2.y*can.height); ctx.lineTo(p1.x*can.width, p1.y*can.height);
+            ctx.moveTo(p2.x*can.width, p2.y*can.height); ctx.lineTo(p3.x*can.width, p3.y*can.height);
+            ctx.stroke();
+        }
 
-        initCamera();
+        function resetAnalysis() {
+            selected = [];
+            document.getElementById('angle-display').innerText = "Select 3 points";
+            const aCanvas = document.getElementById('analysis-canvas'), aCtx = aCanvas.getContext('2d'), img = new Image();
+            img.src = originalImageData;
+            img.onload = () => aCtx.drawImage(img, 0, 0);
+        }
+
+        function downloadAnalysis() {
+            const link = document.createElement('a');
+            link.download = 'analysed-assessment.png';
+            link.href = document.getElementById('analysis-canvas').toDataURL();
+            link.click();
+        }
+
+        function closeModal() { document.getElementById('modal').classList.add('hidden'); resetAnalysis(); }
     </script>
 </body>
 </html>
