@@ -408,7 +408,7 @@
         ];
 
         // Master Clinical Goniometry Protocol Database
-        // Structured for direct use in the selectable anatomical-line calculations
+        // Explicitly structural definitions strictly mapped to Spinal, Thoracic, Lumbar, and Trunk frameworks
         const CLINICAL_PROTOCOLS = {
             "cervical": {
                 name: "Cervical Spine (Neck)",
@@ -416,32 +416,147 @@
                     {
                         movement: "Cervical Flexion / Extension",
                         movement_plane: "Sagittal",
-                        measurement_type: "segment-vertical",
-                        axis: { name: "Cervical Center (Ear focus)", landmark: [7, 8] },
-                        proximal_segment_line: { name: "Vertical Reference Line", landmarks: [] },
-                        distal_segment_line: { name: "Right Cervical Axis (Ear-Shoulder)", landmarks: ["neck-right", "neck-left"] }, 
-                        reference_type: "segment-vertical",
-                        requires_vertical_reference: true,
+                        measurement_type: "segment-segment",
+                        axis: { name: "Ear Vertex", landmark: [7, 8] },
+                        proximal_segment_line: { name: "Trunk Axis (Thoracic Vertical Line)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        distal_segment_line: { name: "Head-Face Axis (Ear to Nose)", landmarks: ["head-lateral-left", "head-lateral-right"] }, 
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
                         requires_horizontal_reference: false,
-                        requires_perpendicular_generation: true,
+                        requires_perpendicular_generation: false,
                         recommended_camera_view: "Lateral",
                         normal_rom: "0° - 45° (Flexion), 0° - 45° (Extension)",
-                        clinical_notes: "Measure displacement of the neck axis relative to a vertical plumb reference."
+                        clinical_notes: "Measure displacement of Head-Face axis relative to static Thoracic vertical trunk axis."
                     },
                     {
-                        movement: "Cervical Lateral Flexion",
+                        movement: "Cervical Side Flexion",
                         movement_plane: "Frontal",
                         measurement_type: "segment-vertical",
-                        axis: { name: "Shoulder Alignment Midpoint", landmark: [11, 12] },
-                        proximal_segment_line: { name: "Vertical Spine Reference Line", landmarks: [] },
-                        distal_segment_line: { name: "Head Lateral Axis", landmarks: ["head-lateral-right", "head-lateral-left"] },
+                        axis: { name: "Neck Base (C7 Region / Mid-Shoulder)", landmark: [11, 12] },
+                        proximal_segment_line: { name: "Trunk Vertical Plumb Line", landmarks: [] },
+                        distal_segment_line: { name: "Head Midline Axis (Nose alignment)", landmarks: ["head-alignment"] },
                         reference_type: "segment-vertical",
                         requires_vertical_reference: true,
                         requires_horizontal_reference: false,
                         requires_perpendicular_generation: true,
                         recommended_camera_view: "Anterior / Posterior",
                         normal_rom: "0° - 45°",
-                        clinical_notes: "Align using ear-to-ear or nose-to-ear vectors against plumb line."
+                        clinical_notes: "Calculates tilt of the head midline relative to C7 base and vertical plumb."
+                    },
+                    {
+                        movement: "Cervical Rotation",
+                        movement_plane: "Transverse",
+                        measurement_type: "segment-horizontal",
+                        axis: { name: "Neck Center (Craniofacial apex)", landmark: [0] },
+                        proximal_segment_line: { name: "Shoulder Line (Horizontal Reference)", landmarks: ["collar-alignment"] },
+                        distal_segment_line: { name: "Facial / Nose Vector", landmarks: ["head-lateral-left", "head-lateral-right"] },
+                        reference_type: "segment-horizontal",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: true,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Superior (Transverse Overlay)",
+                        normal_rom: "0° - 80°",
+                        clinical_notes: "Assess cervical rotation comparing facial orientation alignment to horizontal clavicular girdle."
+                    }
+                ]
+            },
+            "thoracic_lumbar": {
+                name: "Thoracolumbar Spine",
+                movements: [
+                    {
+                        movement: "Thoracolumbar Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Thoracolumbar/Spinal Junction Vertex", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Pelvis Axis", landmarks: ["hip-alignment"] },
+                        distal_segment_line: { name: "Trunk Axis", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 60° (Flexion), 0° - 25° (Extension)",
+                        clinical_notes: "Measures spine bending compared to the stable pelvis reference axis."
+                    },
+                    {
+                        movement: "Thoracolumbar Side Flexion",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Lumbar Center Vertex", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Pelvic Vertical Plumb Axis", landmarks: [] },
+                        distal_segment_line: { name: "Trunk Midline Axis", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Posterior",
+                        normal_rom: "0° - 35°",
+                        clinical_notes: "Measure lateral lean of spinal trunk axis relative to pelvic plumb reference."
+                    },
+                    {
+                        movement: "Thoracolumbar Rotation",
+                        movement_plane: "Transverse",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Spinal Center Vertex", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Pelvic Horizontal Axis Line", landmarks: ["hip-alignment"] },
+                        distal_segment_line: { name: "Shoulder Axis Line", landmarks: ["collar-alignment"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Transverse",
+                        normal_rom: "0° - 45°",
+                        clinical_notes: "Align pelvic girdle with shoulder girdle vectors to evaluate rotational spine torsion."
+                    }
+                ]
+            },
+            "trunk": {
+                name: "Trunk Alignment",
+                movements: [
+                    {
+                        movement: "Trunk Flexion / Extension",
+                        movement_plane: "Sagittal",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Hip/Lumbosacral Center Vertex", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Pelvis Axis", landmarks: ["hip-alignment"] },
+                        distal_segment_line: { name: "Thorax / Trunk Axis", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Lateral",
+                        normal_rom: "0° - 90° (Flexion), 0° - 30° (Extension)",
+                        clinical_notes: "Monitors spinal bending displacement relative to pelvic tilt constraints."
+                    },
+                    {
+                        movement: "Trunk Side Flexion",
+                        movement_plane: "Frontal",
+                        measurement_type: "segment-vertical",
+                        axis: { name: "Lumbosacral Center Vertex", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Pelvis Vertical Plumb Axis", landmarks: [] },
+                        distal_segment_line: { name: "Trunk Midline Axis", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
+                        reference_type: "segment-vertical",
+                        requires_vertical_reference: true,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: true,
+                        recommended_camera_view: "Posterior",
+                        normal_rom: "0° - 40°",
+                        clinical_notes: "Measures horizontal pelvic deviation against upright spine vertical alignment."
+                    },
+                    {
+                        movement: "Trunk Rotation",
+                        movement_plane: "Transverse",
+                        measurement_type: "segment-segment",
+                        axis: { name: "Trunk Midline Center Vertex", landmark: [23, 24] },
+                        proximal_segment_line: { name: "Pelvic Baseline Line", landmarks: ["hip-alignment"] },
+                        distal_segment_line: { name: "Shoulder Axis Line", landmarks: ["collar-alignment"] },
+                        reference_type: "segment-segment",
+                        requires_vertical_reference: false,
+                        requires_horizontal_reference: false,
+                        requires_perpendicular_generation: false,
+                        recommended_camera_view: "Transverse View",
+                        normal_rom: "0° - 45°",
+                        clinical_notes: "Calculates total trunk-shoulder rotation offsets relative to pelvis base."
                     }
                 ]
             },
@@ -544,7 +659,7 @@
                         measurement_type: "segment-segment",
                         axis: { name: "Wrist center (Optimized Click Snap)", landmark: [15, 16] },
                         proximal_segment_line: { name: "Forearm", landmarks: ["left-forearm", "right-forearm"] },
-                        distal_segment_line: { name: "Hand MCP Vector", landmarks: ["left-hand", "right-hand"] }, // Upgraded reference mapping
+                        distal_segment_line: { name: "Hand MCP Vector", landmarks: ["left-hand", "right-hand"] }, 
                         reference_type: "segment-segment",
                         requires_vertical_reference: false,
                         requires_horizontal_reference: false,
@@ -567,41 +682,6 @@
                         recommended_camera_view: "Anterior (palmar surface)",
                         normal_rom: "0° - 20° (Radial), 0° - 30° (Ulnar)",
                         clinical_notes: "Measure deviation of the hand vector relative to forearm line."
-                    }
-                ]
-            },
-            "lumbar": {
-                name: "Lumbar Spine",
-                movements: [
-                    {
-                        movement: "Lumbar Flexion / Extension",
-                        movement_plane: "Sagittal",
-                        measurement_type: "segment-vertical",
-                        axis: { name: "Pelvis Center Alignment", landmark: [23, 24] },
-                        proximal_segment_line: { name: "Vertical Axis", landmarks: [] },
-                        distal_segment_line: { name: "Trunk (Lateral)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
-                        reference_type: "segment-vertical",
-                        requires_vertical_reference: true,
-                        requires_horizontal_reference: false,
-                        requires_perpendicular_generation: true,
-                        recommended_camera_view: "Lateral",
-                        normal_rom: "0° - 60° (Flexion), 0° - 25° (Extension)",
-                        clinical_notes: "Clinically differentiates thoracic compensation from true lumbar pelvic tilt."
-                    },
-                    {
-                        movement: "Lumbar Spine Spine Lateral Flexion",
-                        movement_plane: "Frontal",
-                        measurement_type: "segment-vertical",
-                        axis: { name: "Pelvis Center Alignment", landmark: [23, 24] },
-                        proximal_segment_line: { name: "Vertical Spine Axis", landmarks: [] },
-                        distal_segment_line: { name: "Trunk (Posterior view)", landmarks: ["trunk-spine-left", "trunk-spine-right"] },
-                        reference_type: "segment-vertical",
-                        requires_vertical_reference: true,
-                        requires_horizontal_reference: false,
-                        requires_perpendicular_generation: true,
-                        recommended_camera_view: "Posterior",
-                        normal_rom: "0° - 35°",
-                        clinical_notes: "Calculates total spine deviation. Ensure feet stay flat."
                     }
                 ]
             },
@@ -669,7 +749,7 @@
                         measurement_type: "segment-segment",
                         axis: { name: "Ankle center (snapping priority increased)", landmark: [27, 28] },
                         proximal_segment_line: { name: "Shin", landmarks: ["left-shin", "right-shin"] },
-                        distal_segment_line: { name: "Foot segment", landmarks: ["left-foot", "right-foot"] }, // Upgraded reference
+                        distal_segment_line: { name: "Foot segment", landmarks: ["left-foot", "right-foot"] }, 
                         reference_type: "segment-segment",
                         requires_vertical_reference: false,
                         requires_horizontal_reference: false,
