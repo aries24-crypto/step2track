@@ -11,6 +11,9 @@
     <style>
         .gradient-teal { background: linear-gradient(135deg, #0f766e, #115e59); }
         .bg-clinical { background-color: #f8fafc; }
+        /* Toggle Switch Styling */
+        .toggle-checkbox:checked { right: 0; border-color: #ea580c; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #ea580c; }
     </style>
 </head>
 <body class="bg-clinical text-slate-800 font-sans pb-20">
@@ -43,9 +46,23 @@
             
             <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
                 <h2 class="font-bold text-slate-900 text-lg flex items-center gap-2 border-b pb-4"><i class="fa-solid fa-gear text-teal-700"></i> Assessment Settings</h2>
-                <div class="space-y-4">
-                    <label class="flex items-center justify-between cursor-pointer"><span>Include Palms</span> <input type="checkbox" id="ctrl-palm" checked class="w-5 h-5 accent-teal-700"></label>
-                    <label class="flex items-center justify-between cursor-pointer"><span>Skeletal Glow</span> <input type="checkbox" id="ctrl-glow" checked class="w-5 h-5 accent-teal-700"></label>
+                <div class="space-y-6">
+                    <!-- Toggle 1: Include Palms -->
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-bold text-slate-700">Include Palms</span>
+                        <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="ctrl-palm" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer right-6"/>
+                            <label for="ctrl-palm" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                        </div>
+                    </div>
+                    <!-- Toggle 2: Skeletal Glow -->
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-bold text-slate-700">Skeletal Glow</span>
+                        <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" id="ctrl-glow" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer right-6"/>
+                            <label for="ctrl-glow" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
+                        </div>
+                    </div>
                     <button id="capture-btn" class="w-full mt-6 bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95">
                         <i class="fa-solid fa-camera"></i> Capture Frame
                     </button>
@@ -92,7 +109,14 @@
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
             if(results.poseLandmarks) {
                 currentData = results.poseLandmarks;
-                const filtered = currentData.map((lm, i) => (i <= 10) ? {...lm, visibility: 0} : lm);
+                const showPalms = document.getElementById('ctrl-palm').checked;
+                // Filter out face (0-10) always, and palms (15-22) if setting is unchecked
+                const filtered = currentData.map((lm, i) => {
+                    if (i <= 10) return {...lm, visibility: 0}; // Hide face
+                    if (!showPalms && (i >= 15 && i <= 22)) return {...lm, visibility: 0}; // Hide palms
+                    return lm;
+                });
+                
                 if(document.getElementById('ctrl-glow').checked) { ctx.shadowBlur = 10; ctx.shadowColor = '#0d9488'; }
                 drawConnectors(ctx, filtered, POSE_CONNECTIONS, {color: '#ffffff', lineWidth: 4});
                 drawLandmarks(ctx, filtered.filter(l => l.visibility > 0.1), {color: '#ffffff', radius: 5});
@@ -135,6 +159,7 @@
             const rect = can.getBoundingClientRect();
             const x = (e.clientX - rect.left) / rect.width, y = (e.clientY - rect.top) / rect.height;
             let best = {d: 0.08, i: -1};
+            // Allow selection of everything except face (indices 0-10)
             poseData.forEach((p, i) => { if(i > 10) { const dist = Math.hypot(p.x - x, p.y - y); if(dist < best.d) best = {d: dist, i}; }});
             if(best.i !== -1) {
                 selected.push(poseData[best.i]);
@@ -155,7 +180,6 @@
             ctx.moveTo(p2.x*can.width, p2.y*can.height); ctx.lineTo(p3.x*can.width, p3.y*can.height);
             ctx.stroke();
 
-            // Draw arc
             ctx.beginPath();
             const startAngle = Math.atan2(p1.y-p2.y, p1.x-p2.x);
             const endAngle = Math.atan2(p3.y-p2.y, p3.x-p2.x);
