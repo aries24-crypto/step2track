@@ -3,1572 +3,1199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Step2track - Posture & Skeleton Recovery Analyzer</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            50: '#f0fdfa',  // Soft teal-50
-                            100: '#ccfbf1', // Soft teal-100
-                            500: '#0d9488', // Medical Teal-600
-                            600: '#0f766e', // Deep Teal-700
-                            700: '#115e59', // Clinical Teal-800
-                            accent: '#14b8a6', // Teal Accent
-                            orange: '#f97316', // Orange Tagline Accents
-                            charcoal: '#1e293b', // Slate-800 Charcoal Text
-                            muted: '#475569' // Slate-600
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <!-- Google Fonts & FontAwesome Icons -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- MediaPipe Pose Core Dependency -->
+    <title>Step2Track | Clinical ROM Assessment</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
-
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; /* Clean slate-50 background */
-            color: #1e293b; /* Charcoal text */
-            overflow-x: hidden;
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #eef3f5;
+            --panel: #ffffff;
+            --panel-tinted: #f0f7f7;
+            --teal-dark: #0e7572;
+            --teal: #14b8a6;
+            --teal-light: #ccf0ed;
+            --teal-xlight: #e8f8f7;
+            --orange: #f97316;
+            --orange-dark: #ea580c;
+            --orange-light: #fff0e6;
+            --border: #d8e8e8;
+            --border-light: #e8f0f0;
+            --text: #1a2b2b;
+            --text-2: #4a6060;
+            --text-3: #7a9494;
+            --shadow-sm: 0 1px 4px rgba(0,80,70,0.07);
+            --shadow: 0 4px 16px rgba(0,80,70,0.10);
+            --shadow-lg: 0 8px 32px rgba(0,80,70,0.13);
+            --radius: 14px;
+            --radius-sm: 8px;
+            --radius-lg: 20px;
         }
-        .code-font {
-            font-family: 'JetBrains Mono', monospace;
+
+        html, body {
+            height: 100%;
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 14px;
         }
-        /* Custom scrollbar matching minimalist theme */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
+
+        /* HEADER */
+        header {
+            background: var(--panel);
+            border-bottom: 1.5px solid var(--border-light);
+            padding: 0 28px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 12px rgba(0,80,70,0.06);
         }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
+
+        .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: 900;
+            overflow: hidden;
+            flex-shrink: 0;
         }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+
+        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
+
+        .logo-text h1 {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--text);
+            line-height: 1.1;
+            letter-spacing: -0.5px;
         }
-        /* Soft Shadow card panels */
-        .clinic-panel {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+
+        .logo-text span {
+            font-size: 11px;
+            color: var(--orange-dark);
+            font-weight: 600;
+            font-style: italic;
+            letter-spacing: 0.1px;
         }
-        .teal-glow {
-            box-shadow: 0 0 20px rgba(13, 148, 136, 0.15);
+
+        .system-badge {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--teal-xlight);
+            border: 1px solid var(--teal-light);
+            padding: 6px 14px;
+            border-radius: 999px;
+            color: var(--teal-dark);
+            font-weight: 600;
+            font-size: 12.5px;
         }
-        .active-glow {
-            box-shadow: 0 0 25px rgba(20, 184, 166, 0.3);
+
+        .pulse-dot {
+            position: relative;
+            width: 8px; height: 8px;
+        }
+        .pulse-dot::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: var(--teal);
+            animation: pulse-ring 1.8s ease-out infinite;
+        }
+        .pulse-dot::after {
+            content: '';
+            position: absolute;
+            inset: 1px;
+            border-radius: 50%;
+            background: var(--teal-dark);
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(1); opacity: 0.8; }
+            70% { transform: scale(2.2); opacity: 0; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+
+        /* LAYOUT */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 18px;
+            padding: 18px 20px 20px;
+            min-height: calc(100vh - 60px);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* LEFT PANEL */
+        .left-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 10px;
+            letter-spacing: -0.2px;
+        }
+
+        /* LIVE TRACKING CARD */
+        .live-card {
+            background: var(--panel);
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--border-light);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .live-card-inner { padding: 14px; }
+
+        /* VIEWPORT */
+        .viewport-wrap {
+            position: relative;
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #0d1a1a;
+            aspect-ratio: 4/3;
+            border: 1.5px solid #1e3535;
+        }
+
+        #loading {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4a8080;
+            font-size: 13px;
+            font-weight: 500;
+            background: #0d1a1a;
+            z-index: 2;
+        }
+
+        #loading-spinner {
+            width: 20px; height: 20px;
+            border: 2px solid #1e3535;
+            border-top-color: var(--teal);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        #video { display: none; }
+        #canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+        /* CONTROLS ROW */
+        .controls-row {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            padding: 10px 0 8px;
+            border-bottom: 1px solid var(--border-light);
+            margin-bottom: 10px;
+        }
+
+        .ctrl-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            flex: 1;
+            padding: 0 8px;
+        }
+
+        .ctrl-item:not(:last-child) {
+            border-right: 1px solid var(--border-light);
+        }
+
+        .ctrl-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-2);
+            white-space: nowrap;
+        }
+
+        /* Toggle */
+        .toggle-wrap { display: flex; align-items: center; gap: 6px; }
+
+        .toggle-track {
+            width: 42px;
+            height: 22px;
+            border-radius: 999px;
+            background: #d0e4e4;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: 1.5px solid #b8d4d4;
+        }
+
+        .toggle-track.on {
+            background: var(--teal);
+            border-color: var(--teal-dark);
+        }
+
+        .toggle-thumb {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+            transition: transform 0.2s;
+        }
+
+        .toggle-track.on .toggle-thumb { transform: translateX(20px); }
+
+        .toggle-badge {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--teal-dark);
+        }
+
+        .toggle-track:not(.on) .toggle-badge { color: var(--text-3); }
+
+        /* CAPTURE BUTTON */
+        .capture-btn {
+            width: 100%;
+            padding: 11px;
+            background: linear-gradient(135deg, var(--teal-dark), #0f9d90);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            letter-spacing: 0.2px;
+            transition: all 0.15s;
+            box-shadow: 0 2px 10px rgba(14,117,114,0.30);
+        }
+
+        .capture-btn:hover { background: linear-gradient(135deg, #0c6560, #0e8a80); box-shadow: 0 4px 14px rgba(14,117,114,0.4); }
+        .capture-btn:active { transform: scale(0.98); }
+
+        .capture-btn svg { width: 16px; height: 16px; }
+
+        /* CAPTURED ASSESSMENTS */
+        .captured-section {
+            background: var(--panel);
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--border-light);
+            box-shadow: var(--shadow);
+            padding: 14px;
+            flex: 1;
+        }
+
+        #captured-container { display: none; }
+        #captured-container.visible { display: block; }
+
+        .assessment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .assessment-card {
+            background: var(--panel-tinted);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .assessment-card img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            display: block;
+        }
+
+        .card-actions {
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .btn-view {
+            width: 100%;
+            padding: 5px 6px;
+            background: var(--teal);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .btn-view:hover { background: var(--teal-dark); }
+
+        .btn-download {
+            width: 100%;
+            padding: 5px 6px;
+            background: var(--orange);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .btn-download:hover { background: var(--orange-dark); }
+
+        .btn-analyse {
+            width: 100%;
+            padding: 5px 6px;
+            background: white;
+            color: var(--text-2);
+            border: 1.5px solid var(--border);
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-analyse:hover { border-color: var(--teal); color: var(--teal-dark); }
+
+        .btn-delete {
+            width: 100%;
+            padding: 4px 6px;
+            background: white;
+            color: #e53e3e;
+            border: 1.5px solid #fca5a5;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-delete:hover { background: #fff0f0; }
+
+        /* RIGHT PANEL - ANALYSIS */
+        .right-panel {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .analysis-card {
+            background: var(--panel);
+            border-radius: var(--radius-lg);
+            border: 1.5px solid var(--border-light);
+            box-shadow: var(--shadow-lg);
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .analysis-header {
+            padding: 14px 18px;
+            border-bottom: 1.5px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .analysis-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: var(--text);
+            letter-spacing: -0.3px;
+        }
+
+        .analysis-header-btns {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-sm {
+            padding: 7px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 12.5px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.15s;
+            border: none;
+            white-space: nowrap;
+        }
+
+        .btn-outline {
+            background: white;
+            color: var(--text-2);
+            border: 1.5px solid var(--border);
+        }
+
+        .btn-outline:hover { border-color: var(--teal); color: var(--teal-dark); }
+
+        .btn-orange {
+            background: var(--orange);
+            color: white;
+            box-shadow: 0 2px 8px rgba(249,115,22,0.3);
+        }
+
+        .btn-orange:hover { background: var(--orange-dark); }
+
+        .btn-teal {
+            background: var(--teal-xlight);
+            color: var(--teal-dark);
+            border: 1.5px solid var(--teal-light);
+        }
+
+        .btn-teal:hover { background: var(--teal-light); }
+
+        /* ANALYSIS BODY */
+        .analysis-body {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .analysis-canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: #f2f7f7;
+            min-width: 0;
+            position: relative;
+        }
+
+        .canvas-frame {
+            background: #0d1a1a;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+        }
+
+        #analysis-canvas {
+            max-width: 100%;
+            max-height: calc(100vh - 280px);
+            display: block;
+            cursor: crosshair;
+            border-radius: var(--radius);
+        }
+
+        .angle-display-overlay {
+            position: absolute;
+            top: 26px;
+            left: 26px;
+            background: rgba(255,255,255,0.93);
+            border: 1.5px solid var(--teal-light);
+            border-radius: var(--radius-sm);
+            padding: 6px 14px;
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--teal-dark);
+            backdrop-filter: blur(4px);
+            font-family: 'DM Mono', monospace;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            color: var(--text-3);
+            text-align: center;
+        }
+
+        .empty-state svg { opacity: 0.3; }
+
+        .empty-state p { font-size: 13px; font-weight: 500; max-width: 200px; line-height: 1.5; }
+
+        /* THUMBNAIL SIDEBAR */
+        .thumb-sidebar {
+            width: 140px;
+            flex-shrink: 0;
+            border-left: 1.5px solid var(--border-light);
+            background: var(--panel-tinted);
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .thumb-sidebar-title {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--text-3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .thumb-item {
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1.5px solid var(--border);
+            cursor: pointer;
+            background: #0d1a1a;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .thumb-item:hover { border-color: var(--teal); box-shadow: 0 2px 8px rgba(14,117,114,0.18); }
+        .thumb-item.active { border-color: var(--orange); }
+
+        .thumb-item img {
+            width: 100%;
+            aspect-ratio: 4/3;
+            object-fit: cover;
+            display: block;
+        }
+
+        .thumb-label {
+            padding: 4px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-3);
+            background: var(--panel-tinted);
+            text-align: center;
+        }
+
+        /* ANALYSIS FOOTER */
+        .analysis-footer {
+            padding: 12px 18px;
+            border-top: 1.5px solid var(--border-light);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            background: white;
+        }
+
+        .status-bar {
+            background: var(--panel);
+            border-top: 1px solid var(--border-light);
+            padding: 6px 24px;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-3);
+            font-family: 'DM Mono', monospace;
+            gap: 16px;
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+        /* Responsive */
+        @media (max-width: 960px) {
+            .app-layout { grid-template-columns: 1fr; }
+            .right-panel { min-height: 600px; }
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between relative">
+<body>
 
-    <!-- Posture Alert Banner (Fix Posture Warning on bad posture < 80) -->
-    <div id="posture-bad-banner" class="fixed top-0 left-0 right-0 z-[100] transform -translate-y-full transition-all duration-300 pointer-events-none flex justify-center p-3">
-        <div class="bg-amber-500 text-white font-bold px-6 py-2.5 rounded-full shadow-lg flex items-center gap-3 border border-amber-600/20 text-sm animate-bounce pointer-events-auto">
-            <i class="fa-solid fa-triangle-exclamation text-lg"></i>
-            <span>Fix Posture</span>
+<header>
+    <div class="logo-area">
+        <div class="logo-icon">
+            <img src="step2heal.jpeg" alt="Logo" onerror="this.parentElement.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'white\' stroke-width=\'2.5\' width=\'20\' height=\'20\'><path d=\'M13 2L3 14h9l-1 8 10-12h-9l1-8z\'/></svg>'">
+        </div>
+        <div class="logo-text">
+            <h1>Step2Track</h1>
+            <span>Where every step matters</span>
         </div>
     </div>
+    <div class="system-badge">
+        <div class="pulse-dot"></div>
+        System Active
+    </div>
+</header>
 
-    <!-- Top Nav / Header -->
-    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 px-4 py-3 lg:px-8 shadow-sm">
-        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <!-- Brand Logo & Tagline -->
-            <div class="flex items-center gap-4">
-                <div class="h-14 w-14 rounded-xl bg-white p-1 border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
-                    <!-- Loaded local logo step2heal.jpeg -->
-                    <img src="step2heal.jpeg" alt="Step2track Logo" class="h-full w-full object-contain rounded" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=100';">
-                </div>
-                <div>
-                    <h1 class="text-2xl font-extrabold tracking-tight text-slate-800 flex items-center gap-1.5">
-                        Step2track <span class="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full border border-teal-200 font-bold uppercase tracking-wide">Posture AI</span>
-                    </h1>
-                    <p class="text-xs text-orange-500 font-semibold italic tracking-wide">where every step matters</p>
-                </div>
-            </div>
-            
-            <!-- System Connections Status Dashboard -->
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200">
-                    <span class="relative flex h-2.5 w-2.5">
-                        <span id="status-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                        <span id="status-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                    </span>
-                    <span id="status-text" class="text-xs font-semibold text-slate-600">System Idle</span>
-                </div>
-                <!-- Mini Stats -->
-                <div class="hidden md:flex items-center gap-2 text-xs">
-                    <div class="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200">
-                        <span class="text-slate-500">FPS:</span> <span id="fps-val" class="font-bold text-teal-600">0</span>
-                    </div>
-                    <div class="px-2.5 py-1 rounded-md bg-slate-100 border border-slate-200">
-                        <span class="text-slate-500">Latency:</span> <span id="latency-val" class="font-bold text-slate-700">0ms</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </header>
+<div class="app-layout">
 
-    <!-- Main Workspace Container -->
-    <main class="max-w-7xl w-full mx-auto px-4 py-6 flex-grow flex flex-col lg:flex-row gap-6">
-        
-        <!-- Left Column: Camera Feed & Video Viewport -->
-        <div class="w-full lg:w-[58%] flex flex-col gap-4">
-            <div class="relative clinic-panel rounded-2xl p-3 min-h-[300px] md:min-h-[480px] flex flex-col items-center justify-center">
-                
-                <!-- Loading & Setup Overlay -->
-                <div id="loading-overlay" class="absolute inset-0 bg-white/95 flex flex-col items-center justify-center z-30 transition-all duration-500 rounded-2xl">
-                    <div class="relative flex items-center justify-center mb-6">
-                        <div class="absolute w-24 h-24 rounded-full border-4 border-dashed border-teal-500/20 spin-slow"></div>
-                        <div class="absolute w-20 h-20 rounded-full border-4 border-t-teal-600 border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                        <div class="h-12 w-12 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center">
-                            <i class="fa-solid fa-heart-pulse text-teal-600 animate-pulse text-xl"></i>
-                        </div>
+    <!-- LEFT PANEL -->
+    <div class="left-panel">
+
+        <!-- LIVE TRACKING CARD -->
+        <div class="live-card">
+            <div class="live-card-inner">
+                <p class="section-title">Live Tracking</p>
+
+                <div class="viewport-wrap">
+                    <div id="loading">
+                        <div id="loading-spinner"></div>
+                        Initializing tracking system...
                     </div>
-                    <h3 class="text-lg font-bold text-slate-800 tracking-wide">Initializing Clinical AI Engine</h3>
-                    <p class="text-xs text-slate-500 mt-2 max-w-xs text-center px-4 leading-relaxed">
-                        Setting up real-time skeletal telemetry algorithms. Please allow camera permissions when prompted.
-                    </p>
-                    <div class="w-48 bg-slate-100 h-1.5 rounded-full mt-4 overflow-hidden border border-slate-200">
-                        <div id="load-progress" class="bg-gradient-to-r from-teal-500 to-teal-600 h-full w-[10%] transition-all duration-300"></div>
-                    </div>
+                    <video id="video" playsinline muted></video>
+                    <canvas id="canvas"></canvas>
                 </div>
 
-                <!-- HTTPS/Webcam Troubleshooting Warning Overlay -->
-                <div id="protocol-warning" class="absolute inset-0 bg-white/98 flex flex-col items-center justify-center z-40 hidden p-6 text-center overflow-y-auto rounded-2xl">
-                    <div class="h-14 w-14 rounded-full bg-amber-500/10 border border-amber-400/30 flex items-center justify-center mb-4 text-amber-500 text-2xl animate-bounce">
-                        <i class="fa-solid fa-triangle-exclamation"></i>
-                    </div>
-                    <h3 class="text-lg font-bold text-slate-800 tracking-wide">Secure Context Check Required</h3>
-                    <p class="text-xs text-slate-500 mt-2 max-w-md leading-relaxed">
-                        To run local camera analytics, web browsers require a secure connection (<code class="text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded font-mono font-semibold">https://</code>) or a direct <code class="text-teal-700 bg-teal-50 px-1.5 py-0.5 rounded font-mono font-semibold">localhost</code> pipeline.
-                    </p>
-                    
-                    <div class="mt-5 w-full max-w-md text-left bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
-                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider block border-b border-slate-200 pb-1.5">Actionable Deployment Fixes:</span>
-                        
-                        <div class="space-y-3.5 text-xs text-slate-600">
-                            <div>
-                                <p class="text-slate-800 font-bold flex items-center gap-1.5">
-                                    <span class="h-4 w-4 bg-teal-600 text-white text-[9px] rounded-full flex items-center justify-center font-bold">1</span> 
-                                    Vercel Production Deployments
-                                </p>
-                                <p class="mt-1">Vercel serves pages over <strong class="text-slate-800">HTTPS</strong> automatically. If the camera still fails, you may have declined permission. Reset permission by clicking the padlock <i class="fa-solid fa-lock text-slate-400"></i> in the browser address bar, then select <strong class="text-slate-800">"Allow Camera"</strong>.</p>
+                <!-- Controls -->
+                <div class="controls-row">
+                    <div class="ctrl-item">
+                        <span class="ctrl-label">Palm Landmarks</span>
+                        <div class="toggle-wrap">
+                            <div class="toggle-track on" id="toggle-palm" onclick="toggleCtrl('palm')">
+                                <div class="toggle-thumb"></div>
                             </div>
-                            
-                            <div>
-                                <p class="text-slate-800 font-bold flex items-center gap-1.5">
-                                    <span class="h-4 w-4 bg-teal-600 text-white text-[9px] rounded-full flex items-center justify-center font-bold">2</span> 
-                                    Running Locally (Notepad, VS Code, etc)
-                                </p>
-                                <p class="mt-1">Instead of opening the file directly (e.g., <code class="bg-slate-200 text-slate-800 px-1 rounded">file://C:/index.html</code>), host a temporary server. In terminal/cmd run:</p>
-                                <code class="block bg-slate-900 text-slate-200 p-2.5 rounded font-mono text-[11px] mt-1 select-all border border-slate-700">python -m http.server 8000</code>
-                                <p class="text-[10px] text-slate-500 mt-1">Then visit <a href="http://localhost:8000" target="_blank" class="text-teal-600 font-semibold underline hover:text-teal-700">http://localhost:8000</a>.</p>
+                            <span class="toggle-badge" id="badge-palm">ON</span>
+                        </div>
+                    </div>
+                    <div class="ctrl-item">
+                        <span class="ctrl-label">Skeletal Glow</span>
+                        <div class="toggle-wrap">
+                            <div class="toggle-track on" id="toggle-glow" onclick="toggleCtrl('glow')">
+                                <div class="toggle-thumb"></div>
                             </div>
+                            <span class="toggle-badge" id="badge-glow">ON</span>
                         </div>
                     </div>
-                    
-                    <button onclick="dismissProtocolWarning()" class="mt-6 text-xs text-slate-500 hover:text-slate-800 underline transition-colors">
-                        Ignore warning and try anyway
-                    </button>
-                </div>
-
-                <!-- Custom Alert Notification Box (Replacing default alert modals) -->
-                <div id="alert-banner" class="absolute top-4 left-4 right-4 z-40 hidden transform translate-y-[-10px] transition-all duration-300">
-                    <div class="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded-xl flex items-center justify-between shadow-md">
-                        <div class="flex items-center gap-3">
-                            <i class="fa-solid fa-circle-exclamation text-rose-600 text-lg"></i>
-                            <span id="alert-message" class="text-xs md:text-sm font-medium"></span>
+                    <div class="ctrl-item">
+                        <span class="ctrl-label">Joint Dots</span>
+                        <div class="toggle-wrap">
+                            <div class="toggle-track" id="toggle-joints" onclick="toggleCtrl('joints')">
+                                <div class="toggle-thumb"></div>
+                            </div>
+                            <span class="toggle-badge" id="badge-joints">OFF</span>
                         </div>
-                        <button onclick="hideAlert()" class="text-rose-500 hover:text-rose-800 transition-colors">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
                     </div>
                 </div>
 
-                <!-- Hidden Native Video Device -->
-                <video id="input-video" class="hidden" playsinline muted autoplay></video>
-                
-                <!-- Rendering Canvas Container -->
-                <div class="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-900 flex items-center justify-center border border-slate-200 shadow-inner">
-                    <!-- Feed Placeholder when inactive -->
-                    <div id="video-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-4 text-center z-10">
-                        <div class="h-16 w-16 rounded-full bg-slate-800 flex items-center justify-center mb-3 text-slate-500 shadow-md">
-                            <i class="fa-solid fa-video-slash text-2xl"></i>
-                        </div>
-                        <p class="text-sm font-semibold text-slate-300">Live Posture Stream Off</p>
-                        <p class="text-xs text-slate-500 mt-1 max-w-xs">Press the "Activate Webcam" button below to initiate dynamic body tracking.</p>
-                    </div>
-
-                    <!-- Output processing canvas -->
-                    <canvas id="output-canvas" class="w-full h-full object-contain pointer-events-none z-20 opacity-0 transition-opacity duration-500"></canvas>
-                </div>
-
-                <!-- Sub-HUD overlay metrics -->
-                <div class="w-full flex justify-between items-center px-2 pt-3 text-xs text-slate-500">
-                    <span id="camera-resolution" class="font-mono bg-slate-100 border border-slate-200 px-2 py-1 rounded">Res: -- x --</span>
-                    <span id="pose-confidence-meter" class="font-mono bg-slate-100 border border-slate-200 px-2 py-1 rounded flex items-center gap-1.5">
-                        <span class="w-2.5 h-2.5 rounded-full bg-slate-400 inline-block animate-pulse" id="confidence-indicator"></span> 
-                        Confidence: <span id="confidence-val" class="font-bold text-slate-700">0%</span>
-                    </span>
-                </div>
-            </div>
-
-            <!-- Dynamic Session Captures -->
-            <div class="clinic-panel rounded-2xl p-4 flex flex-col gap-3">
-                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-clipboard-user text-teal-600"></i>
-                        <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Calibration Snapshots</h4>
-                    </div>
-                    <span class="text-[10px] text-slate-400 font-mono" id="gallery-count">0 frames captured</span>
-                </div>
-                <div id="snapshot-gallery" class="flex gap-3 overflow-x-auto pb-1 min-h-[85px] scrollbar">
-                    <div id="gallery-empty" class="text-xs text-slate-400 flex items-center justify-center w-full py-2 italic">
-                        Captured biomechanical snapshots will appear here during live tracking.
-                    </div>
-                </div>
+                <button class="capture-btn" id="capture-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    Capture Assessment
+                </button>
             </div>
         </div>
 
-        <!-- Right Column: System Controls & Posture Calibration Diagnostics -->
-        <div class="w-full lg:w-[42%] flex flex-col gap-4">
-            
-            <!-- System Controls -->
-            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-4">
-                <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-stethoscope text-teal-600"></i>
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Analysis Setup</h3>
-                    </div>
-                    <span class="text-[10px] bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200 font-mono font-bold">Step2Track V1.5</span>
-                </div>
-
-                <!-- Webcam Device Selector and Complexity Controls -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                            <i class="fa-solid fa-sliders text-teal-600"></i> Video Input
-                        </label>
-                        <select id="camera-select" class="bg-white border border-slate-200 text-xs text-slate-700 rounded-lg p-2.5 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors shadow-sm">
-                            <option value="default">Default Device</option>
-                        </select>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <label class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                            <i class="fa-solid fa-brain text-teal-600"></i> Neural Accuracy
-                        </label>
-                        <select id="model-complexity" class="bg-white border border-slate-200 text-xs text-slate-700 rounded-lg p-2.5 outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-colors shadow-sm">
-                            <option value="0">Basic Mode (Faster, light)</option>
-                            <option value="1" selected>Optimal Mode (Balanced)</option>
-                            <option value="2">Precision Mode (Heavy, clinic)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Primary Control Buttons -->
-                <div class="grid grid-cols-2 gap-3 mt-1">
-                    <button id="btn-camera-toggle" class="col-span-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md active:scale-[0.98]">
-                        <i class="fa-solid fa-circle-play"></i>
-                        <span id="btn-camera-text">Activate Webcam</span>
-                    </button>
-                    <button id="btn-capture" class="col-span-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
-                        <i class="fa-solid fa-camera"></i>
-                        Capture Frame
-                    </button>
-                </div>
+        <!-- CAPTURED ASSESSMENTS -->
+        <div class="captured-section">
+            <p class="section-title">Captured Assessments</p>
+            <div id="captured-container">
+                <div id="assessment-grid" class="assessment-grid"></div>
             </div>
-
-            <!-- Calibration Adjusters -->
-            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-3">
-                <div class="flex justify-between items-center border-b border-slate-100 pb-2">
-                    <h4 class="text-xs font-bold text-slate-600 tracking-wider uppercase">Visualizations</h4>
-                    <button id="btn-calibrate" class="text-[10px] bg-slate-100 border border-slate-200 text-slate-600 hover:bg-teal-50 hover:text-teal-700 hover:border-teal-200 px-2 py-1 rounded font-bold transition-all flex items-center gap-1">
-                        <i class="fa-solid fa-arrows-spin"></i> Reset Calibration
-                    </button>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-3 mt-1">
-                    <!-- Toggle Face -->
-                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
-                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
-                            <i class="fa-solid fa-face-smile text-amber-500"></i> Face Overlay
-                        </span>
-                        <input type="checkbox" id="toggle-face" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
-                    </label>
-
-                    <!-- Toggle Bones -->
-                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
-                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
-                            <i class="fa-solid fa-vector-square text-teal-600"></i> Bone Skeletal
-                        </span>
-                        <input type="checkbox" id="toggle-bones" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
-                    </label>
-
-                    <!-- Toggle Hand Points -->
-                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
-                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
-                            <i class="fa-solid fa-hand text-teal-500"></i> Hands Overlay
-                        </span>
-                        <input type="checkbox" id="toggle-hands" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
-                    </label>
-
-                    <!-- Toggle Highlight Glow -->
-                    <label class="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
-                        <span class="text-xs font-medium text-slate-700 flex items-center gap-2">
-                            <i class="fa-solid fa-circle-half-stroke text-slate-600"></i> Render Glow
-                        </span>
-                        <input type="checkbox" id="toggle-glow" checked class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 h-4 w-4">
-                    </label>
-                </div>
-
-                <!-- Interactive Skeletal Color Themes -->
-                <div class="mt-2 space-y-3">
-                    <div class="flex items-center justify-between gap-4">
-                        <span class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                            <i class="fa-solid fa-palette text-teal-600"></i> Aesthetic Accent
-                        </span>
-                        <div class="flex items-center gap-2">
-                            <button class="theme-dot w-6 h-6 rounded-full bg-teal-500 ring-2 ring-white ring-offset-2 ring-offset-slate-100" data-color="#0d9488"></button>
-                            <button class="theme-dot w-6 h-6 rounded-full bg-indigo-500" data-color="#4f46e5"></button>
-                            <button class="theme-dot w-6 h-6 rounded-full bg-sky-500" data-color="#0ea5e9"></button>
-                            <button class="theme-dot w-6 h-6 rounded-full bg-emerald-500" data-color="#10b981"></button>
-                            <button class="theme-dot w-6 h-6 rounded-full bg-amber-500" data-color="#d97706"></button>
-                        </div>
-                    </div>
-                </div>
+            <div id="empty-captures" style="color: var(--text-3); font-size: 12.5px; text-align: center; padding: 20px 0;">
+                No assessments captured yet. Press "Capture Assessment" to begin.
             </div>
-
-            <!-- Real-time Clinical Bio-metrics & Posture Diagnosis -->
-            <div class="clinic-panel rounded-2xl p-5 flex flex-col gap-4 flex-grow">
-                <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-chart-line text-teal-600"></i>
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Clinical Biometrics</h3>
-                    </div>
-                    <span id="posture-state-badge" class="px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-slate-100 text-slate-500">
-                        Awaiting feed...
-                    </span>
-                </div>
-
-                <!-- Posture Score & Alignment Metrics -->
-                <div class="grid grid-cols-2 gap-4">
-                    <!-- Posture Card -->
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col items-center justify-center text-center">
-                        <div class="relative w-16 h-16 flex items-center justify-center mb-1.5">
-                            <!-- Circular Progress Indicator -->
-                            <svg class="w-full h-full transform -rotate-90">
-                                <circle cx="32" cy="32" r="28" stroke="#e2e8f0" stroke-width="5" fill="transparent" />
-                                <circle id="posture-score-circle" cx="32" cy="32" r="28" stroke="#0d9488" stroke-width="5" fill="transparent" stroke-dasharray="175.9" stroke-dashoffset="175.9" class="transition-all duration-300" />
-                            </svg>
-                            <span id="posture-score-text" class="absolute font-extrabold text-sm text-slate-800">0%</span>
-                        </div>
-                        <span class="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Posture Quality</span>
-                    </div>
-
-                    <!-- Live Alignment Monitor -->
-                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-[11px] border-b border-slate-100 pb-1">
-                                <span class="text-slate-500">Shoulders:</span>
-                                <span id="alignment-shoulders" class="font-mono text-slate-600 font-bold">Uncalibrated</span>
-                            </div>
-                            <div class="flex justify-between text-[11px] border-b border-slate-100 pb-1">
-                                <span class="text-slate-500">Pelvic/Hips:</span>
-                                <span id="alignment-hips" class="font-mono text-slate-600 font-bold">Uncalibrated</span>
-                            </div>
-                            <div class="flex justify-between text-[11px]">
-                                <span class="text-slate-500">Head Tilt:</span>
-                                <span id="alignment-leaning" class="font-mono text-slate-600 font-bold">Uncalibrated</span>
-                            </div>
-                        </div>
-                        <p id="posture-tips" class="text-[10px] text-teal-700 italic text-center mt-1.5 font-medium">Position full skeleton in view.</p>
-                    </div>
-                </div>
-
-                <!-- Live Joint Angles Area -->
-                <div class="space-y-3">
-                    <h5 class="text-xs font-bold text-slate-600 uppercase tracking-wider">Dynamic Joint Biomechanics</h5>
-                    
-                    <div class="grid grid-cols-2 gap-3">
-                        <!-- Elbow Flex -->
-                        <div class="bg-white p-3 rounded-xl border border-slate-200">
-                            <div class="flex justify-between items-center text-xs mb-2">
-                                <span class="font-bold text-slate-700 flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-teal-500"></span> Elbow Extension
-                                </span>
-                                <i class="fa-solid fa-angles-right text-[10px] text-slate-400"></i>
-                            </div>
-                            <div class="space-y-1.5">
-                                <div class="flex justify-between text-[10px] font-mono text-slate-500">
-                                    <span>L: <span id="angle-elbow-l" class="text-slate-800 font-bold">0°</span></span>
-                                    <span>R: <span id="angle-elbow-r" class="text-slate-800 font-bold">0°</span></span>
-                                </div>
-                                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
-                                    <div id="bar-elbow-l" class="bg-teal-500 h-full w-[0%] transition-all duration-100"></div>
-                                    <div id="bar-elbow-r" class="bg-teal-300 h-full w-[0%] transition-all duration-100 border-l border-white"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Knee Flex -->
-                        <div class="bg-white p-3 rounded-xl border border-slate-200">
-                            <div class="flex justify-between items-center text-xs mb-2">
-                                <span class="font-bold text-slate-700 flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-teal-600"></span> Knee Flexion
-                                </span>
-                                <i class="fa-solid fa-angles-right text-[10px] text-slate-400"></i>
-                            </div>
-                            <div class="space-y-1.5">
-                                <div class="flex justify-between text-[10px] font-mono text-slate-500">
-                                    <span>L: <span id="angle-knee-l" class="text-slate-800 font-bold">0°</span></span>
-                                    <span>R: <span id="angle-knee-r" class="text-slate-800 font-bold">0°</span></span>
-                                </div>
-                                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
-                                    <div id="bar-knee-l" class="bg-teal-600 h-full w-[0%] transition-all duration-100"></div>
-                                    <div id="bar-knee-r" class="bg-teal-400 h-full w-[0%] transition-all duration-100 border-l border-white"></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Trunk Hip Flex -->
-                        <div class="bg-white p-3 rounded-xl border border-slate-200 col-span-2">
-                            <div class="flex justify-between items-center text-xs mb-2">
-                                <span class="font-bold text-slate-700 flex items-center gap-1">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-slate-700"></span> Trunk & Spinal Hips
-                                </span>
-                                <i class="fa-solid fa-angles-right text-[10px] text-slate-400"></i>
-                            </div>
-                            <div class="space-y-1.5">
-                                <div class="flex justify-between text-[10px] font-mono text-slate-500">
-                                    <span>Left Hip: <span id="angle-hip-l" class="text-slate-800 font-bold">0°</span></span>
-                                    <span>Right Hip: <span id="angle-hip-r" class="text-slate-800 font-bold">0°</span></span>
-                                </div>
-                                <div class="h-1.5 bg-slate-100 rounded-full overflow-hidden flex">
-                                    <div id="bar-hip-l" class="bg-slate-700 h-full w-[0%] transition-all duration-100"></div>
-                                    <div id="bar-hip-r" class="bg-slate-400 h-full w-[0%] transition-all duration-100 border-l border-white"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
         </div>
-    </main>
 
-    <!-- Biomechanics Interactive Snapshot Modal -->
-    <div id="inspector-modal" class="fixed inset-0 z-[90] hidden bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4">
-        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col md:flex-row max-h-[90vh]">
-            
-            <!-- Left Side: Interactive Bounding Canvas -->
-            <div class="flex-grow bg-slate-950 p-2 flex items-center justify-center relative min-h-[250px] md:min-h-[400px]">
-                <canvas id="modal-canvas" class="max-w-full max-h-[70vh] object-contain cursor-crosshair rounded-lg"></canvas>
-                <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur text-white text-[10px] px-2.5 py-1 rounded-full font-semibold pointer-events-none">
-                    <i class="fa-solid fa-hand-pointer animate-pulse mr-1"></i> Click any skeletal dot to read angle
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+        <div class="analysis-card">
+            <div class="analysis-header">
+                <span class="analysis-title">Analysis Assessment</span>
+                <div class="analysis-header-btns">
+                    <button class="btn-sm btn-outline" onclick="downloadAnalysis()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                        Download Analysed Image
+                    </button>
+                    <button class="btn-sm btn-orange" onclick="resetAnalysis()">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 109-9M3 3v4h4"/></svg>
+                        Reset Analysis
+                    </button>
+                    <button class="btn-sm btn-outline" onclick="undoSelection()">Undo Selection</button>
                 </div>
             </div>
 
-            <!-- Right Side: Clinical Breakdown & Diagnostic Panel -->
-            <div class="w-full md:w-80 bg-slate-50 border-t md:border-t-0 md:border-l border-slate-200 p-5 flex flex-col justify-between overflow-y-auto">
-                <div class="space-y-4">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <h3 class="text-base font-bold text-slate-800">Biometrics Inspector</h3>
-                            <p class="text-xs text-slate-500">Biomechanical Patient Snapshot</p>
-                        </div>
-                        <button onclick="closeInspectorModal()" class="text-slate-400 hover:text-slate-700 bg-white border border-slate-200 h-8 w-8 rounded-full flex items-center justify-center transition-all">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
+            <div class="analysis-body">
+                <!-- CANVAS AREA -->
+                <div class="analysis-canvas-area">
+                    <div id="empty-analysis" class="empty-state">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M12 8v4M12 16h.01"/>
+                        </svg>
+                        <p>Capture an assessment and click <strong>View/Analyse</strong> to begin ROM analysis</p>
                     </div>
-
-                    <!-- Selected Landmark Angle Display -->
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Selected Joint Telemetry</span>
-                        <div id="inspector-joint-name" class="text-sm font-bold text-slate-800">No Joint Selected</div>
-                        <div class="flex items-baseline gap-1">
-                            <span id="inspector-joint-angle" class="text-3xl font-extrabold text-teal-600">--</span>
-                            <span class="text-sm font-bold text-teal-600" id="inspector-deg-unit"></span>
-                        </div>
-                        <p id="inspector-joint-desc" class="text-xs text-slate-500 leading-relaxed italic">Click any joint node on the skeleton left to measure range of motion (ROM) angles.</p>
+                    <div class="canvas-frame" id="canvas-frame" style="display:none;">
+                        <canvas id="analysis-canvas"></canvas>
                     </div>
-
-                    <!-- Summary of Captured Posture Metrics -->
-                    <div class="space-y-2">
-                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Orthopedic Summary</span>
-                        <div class="text-xs space-y-1.5 bg-white p-3 rounded-lg border border-slate-100 text-slate-600">
-                            <div class="flex justify-between"><span class="font-medium">Posture Quality Score:</span> <span id="modal-posture-score" class="font-bold text-slate-800">--</span></div>
-                            <div class="flex justify-between"><span class="font-medium">Shoulder Balance:</span> <span id="modal-shoulders" class="font-bold text-slate-800">--</span></div>
-                            <div class="flex justify-between"><span class="font-medium">Hip Torsion Level:</span> <span id="modal-hips" class="font-bold text-slate-800">--</span></div>
-                            <div class="flex justify-between"><span class="font-medium">Head Tilt Offset:</span> <span id="modal-leaning" class="font-bold text-slate-800">--</span></div>
-                        </div>
-                    </div>
+                    <div class="angle-display-overlay" id="angle-display">Select 3 points</div>
                 </div>
 
-                <div class="pt-4 border-t border-slate-200 flex gap-2">
-                    <button id="modal-download-btn" class="flex-grow bg-teal-600 hover:bg-teal-700 text-white font-bold py-2.5 px-3 rounded-lg text-xs transition-colors flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-file-arrow-down"></i> Export Diagnostic PNG
-                    </button>
+                <!-- THUMBNAIL SIDEBAR -->
+                <div class="thumb-sidebar" id="thumb-sidebar">
+                    <div class="thumb-sidebar-title">History</div>
+                    <div id="thumb-list"></div>
                 </div>
+            </div>
+
+            <div class="analysis-footer">
+                <button class="btn-sm btn-outline" onclick="downloadAnalysis()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Download Analysed Image
+                </button>
+                <button class="btn-sm btn-orange" onclick="resetAnalysis()">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 109-9M3 3v4h4"/></svg>
+                    Reset Analysis
+                </button>
+                <button class="btn-sm btn-outline" onclick="undoSelection()">Undo Selection</button>
+                <button class="btn-sm btn-teal" style="margin-left: auto;" onclick="vergetAnalysis()">
+                    Verget Analysis
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 text-center py-4 px-4 text-xs text-slate-500 mt-6 shadow-inner">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
-            <p>© 2026 Step2track AI. Powered by localized WebGL computer vision networks.</p>
-            <div class="flex gap-4">
-                <span class="hover:text-teal-600 cursor-help transition-colors" title="Clinical standards for orthopedic posture evaluation.">Clinical Standard Model</span>
-                <span>•</span>
-                <span class="hover:text-teal-600 cursor-help transition-colors" title="Your images are processed purely inside your private browser session. No data is stored or transmitted externally.">Local Privacy Sandbox Safeguard</span>
-            </div>
-        </div>
-    </footer>
+</div>
 
-    <script>
-        // Set state properties
-        const state = {
-            activeColor: '#0d9488', // Medical Teal
-            videoActive: false,
-            modelLoaded: false,
-            lastFrameTime: 0,
-            fpsInterval: null,
-            latencySum: 0,
-            latencyCount: 0,
-            options: {
-                face: true,
-                bones: true,
-                hands: true,
-                glow: true
-            },
-            calibration: {
-                calibrated: false,
-                neutralShoulderDiff: 0.0,
-                neutralHipDiff: 0.0,
-                neutralHeadDiff: 0.0
-            },
-            animationFrameId: null // Stores active rendering loop instance
+<div class="status-bar">
+    <span id="landmark-count">Landmark Data storage: 0</span>
+    <span id="data-size">· data: 0 KB</span>
+</div>
+
+<script>
+    // ─── STATE ───────────────────────────────────────────
+    const state = {
+        palm: true,
+        glow: true,
+        joints: false,
+        currentData: null,
+        originalImageData: null,
+        selected: [],
+        captures: [],
+        activeThumbIndex: -1,
+        totalLandmarks: 0,
+        totalDataBytes: 0,
+        currentPoseDataForAnalysis: null
+    };
+
+    // ─── TOGGLE CONTROLS ─────────────────────────────────
+    function toggleCtrl(key) {
+        state[key] = !state[key];
+        const track = document.getElementById('toggle-' + key);
+        const badge = document.getElementById('badge-' + key);
+        if (state[key]) {
+            track.classList.add('on');
+            badge.textContent = 'ON';
+        } else {
+            track.classList.remove('on');
+            badge.textContent = 'OFF';
+        }
+    }
+
+    // ─── MEDIAPIPE SETUP ─────────────────────────────────
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const pose = new Pose({
+        locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`
+    });
+
+    pose.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+    });
+
+    pose.onResults(results => {
+        document.getElementById('loading').style.display = 'none';
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+        if (results.poseLandmarks) {
+            state.currentData = results.poseLandmarks;
+
+            // Filter: hide face (0-10), optionally palms
+            const filtered = state.currentData.map((lm, i) => {
+                if (i <= 10) return { ...lm, visibility: 0 };
+                if (!state.palm && [17, 19, 21, 18, 20, 22].includes(i)) return { ...lm, visibility: 0 };
+                return lm;
+            });
+
+            // Glow
+            if (state.glow) { ctx.shadowBlur = 12; ctx.shadowColor = '#14b8a6'; }
+
+            // Draw skeleton (teal lines)
+            drawConnectors(ctx, filtered, POSE_CONNECTIONS, { color: '#14b8a6', lineWidth: 3 });
+
+            ctx.shadowBlur = 0;
+
+            // Draw joints
+            if (state.joints) {
+                filtered.forEach(lm => {
+                    if (lm.visibility > 0.2) {
+                        ctx.fillStyle = '#f97316';
+                        ctx.beginPath();
+                        ctx.arc(lm.x * canvas.width, lm.y * canvas.height, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            } else {
+                drawLandmarks(ctx, filtered.filter(l => l.visibility > 0.1), { color: '#ffffff', fillColor: '#0e7572', radius: 4 });
+            }
+        }
+    });
+
+    navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+        video.srcObject = stream;
+        video.play();
+        const loop = async () => {
+            await pose.send({ image: video });
+            requestAnimationFrame(loop);
+        };
+        video.onloadedmetadata = () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            loop();
+        };
+    }).catch(() => {
+        document.getElementById('loading').textContent = 'Camera access denied or unavailable.';
+    });
+
+    // ─── CAPTURE ─────────────────────────────────────────
+    document.getElementById('capture-btn').onclick = () => {
+        if (!state.currentData) return;
+
+        const dataURL = canvas.toDataURL('image/jpeg', 0.92);
+        const poseDataCopy = JSON.parse(JSON.stringify(state.currentData));
+        const index = state.captures.length;
+
+        state.captures.push({ dataURL, poseData: poseDataCopy });
+        state.totalLandmarks += poseDataCopy.length;
+        state.totalDataBytes += dataURL.length * 0.75;
+        updateStatusBar();
+
+        addAssessmentCard(dataURL, poseDataCopy, index);
+        addThumb(dataURL, poseDataCopy, index);
+
+        document.getElementById('captured-container').style.display = 'block';
+        document.getElementById('empty-captures').style.display = 'none';
+    };
+
+    function addAssessmentCard(dataURL, poseData, index) {
+        const grid = document.getElementById('assessment-grid');
+        const card = document.createElement('div');
+        card.className = 'assessment-card';
+        card.id = 'card-' + index;
+        card.innerHTML = `
+            <img src="${dataURL}" alt="Assessment ${index + 1}">
+            <div class="card-actions">
+                <button class="btn-view" onclick="viewAssessment(${index})">View/Analyse</button>
+                <button class="btn-download" onclick="downloadCapture(${index})">Download</button>
+                <button class="btn-analyse" onclick="viewAssessment(${index})">Analyse Picture</button>
+                <button class="btn-delete" onclick="deleteCapture(${index})">Delete</button>
+            </div>
+        `;
+        grid.prepend(card);
+    }
+
+    function addThumb(dataURL, poseData, index) {
+        const list = document.getElementById('thumb-list');
+        const item = document.createElement('div');
+        item.className = 'thumb-item';
+        item.id = 'thumb-' + index;
+        item.onclick = () => viewAssessment(index);
+        item.innerHTML = `
+            <img src="${dataURL}" alt="Thumb ${index + 1}">
+            <div class="thumb-label">View Analysis</div>
+        `;
+        list.appendChild(item);
+    }
+
+    function deleteCapture(index) {
+        const card = document.getElementById('card-' + index);
+        const thumb = document.getElementById('thumb-' + index);
+        if (card) card.remove();
+        if (thumb) thumb.remove();
+        state.captures[index] = null;
+
+        const remaining = state.captures.filter(c => c !== null);
+        if (remaining.length === 0) {
+            document.getElementById('captured-container').style.display = 'none';
+            document.getElementById('empty-captures').style.display = 'block';
+        }
+    }
+
+    function downloadCapture(index) {
+        const cap = state.captures[index];
+        if (!cap) return;
+        const a = document.createElement('a');
+        a.download = `assessment-${index + 1}.jpg`;
+        a.href = cap.dataURL;
+        a.click();
+    }
+
+    // ─── ANALYSIS ────────────────────────────────────────
+    function viewAssessment(index) {
+        const cap = state.captures[index];
+        if (!cap) return;
+
+        // Mark active thumb
+        if (state.activeThumbIndex >= 0) {
+            const prev = document.getElementById('thumb-' + state.activeThumbIndex);
+            if (prev) prev.classList.remove('active');
+        }
+        state.activeThumbIndex = index;
+        const curr = document.getElementById('thumb-' + index);
+        if (curr) curr.classList.add('active');
+
+        state.originalImageData = cap.dataURL;
+        state.currentPoseDataForAnalysis = cap.poseData;
+        state.selected = [];
+
+        const aCanvas = document.getElementById('analysis-canvas');
+        const aCtx = aCanvas.getContext('2d');
+        const img = new Image();
+        img.src = cap.dataURL;
+        img.onload = () => {
+            aCanvas.width = img.width;
+            aCanvas.height = img.height;
+            aCtx.drawImage(img, 0, 0);
+
+            // Redraw skeleton on analysis canvas
+            const filtered = cap.poseData.map((lm, i) => {
+                if (i <= 10) return { ...lm, visibility: 0 };
+                return lm;
+            });
+            aCtx.shadowBlur = 10;
+            aCtx.shadowColor = '#14b8a6';
+            drawConnectors(aCtx, filtered, POSE_CONNECTIONS, { color: '#14b8a6', lineWidth: 3 });
+            aCtx.shadowBlur = 0;
+            drawLandmarks(aCtx, filtered.filter(l => l.visibility > 0.1), { color: '#ffffff', fillColor: '#0e7572', radius: 5 });
+
+            aCanvas.onclick = (e) => handlePointSelect(e, cap.poseData, aCtx, aCanvas);
         };
 
-        // Cache captured landmarks data for modal interaction
-        const capturedFramesData = {};
+        document.getElementById('empty-analysis').style.display = 'none';
+        document.getElementById('canvas-frame').style.display = 'flex';
+        document.getElementById('angle-display').textContent = 'Select 3 points';
+    }
 
-        // DOM elements
-        const videoElement = document.getElementById('input-video');
-        const canvasElement = document.getElementById('output-canvas');
-        const canvasCtx = canvasElement.getContext('2d');
-        const cameraSelect = document.getElementById('camera-select');
-        const modelComplexitySelect = document.getElementById('model-complexity');
-        const btnCameraToggle = document.getElementById('btn-camera-toggle');
-        const btnCameraText = document.getElementById('btn-camera-text');
-        const btnCapture = document.getElementById('btn-capture');
-        const btnCalibrate = document.getElementById('btn-calibrate');
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const loadProgress = document.getElementById('load-progress');
-        const alertBanner = document.getElementById('alert-banner');
-        const alertMessage = document.getElementById('alert-message');
-        const fpsVal = document.getElementById('fps-val');
-        const latencyVal = document.getElementById('latency-val');
-        const statusPulse = document.getElementById('status-pulse');
-        const statusDot = document.getElementById('status-dot');
-        const statusText = document.getElementById('status-text');
-        const placeholder = document.getElementById('video-placeholder');
-        const resolutionLabel = document.getElementById('camera-resolution');
-        const confidenceVal = document.getElementById('confidence-val');
-        const confidenceIndicator = document.getElementById('confidence-indicator');
-        const snapshotGallery = document.getElementById('snapshot-gallery');
-        const galleryEmptyText = document.getElementById('gallery-empty');
-        const galleryCountLabel = document.getElementById('gallery-count');
+    function handlePointSelect(e, poseData, ctx, can) {
+        if (state.selected.length >= 3) return;
 
-        // Posture Warning Banner
-        const postureBadBanner = document.getElementById('posture-bad-banner');
+        const rect = can.getBoundingClientRect();
+        const sx = can.width / rect.width;
+        const sy = can.height / rect.height;
+        const x = (e.clientX - rect.left) * sx / can.width;
+        const y = (e.clientY - rect.top) * sy / can.height;
 
-        // Toggle elements
-        const toggleFace = document.getElementById('toggle-face');
-        const toggleBones = document.getElementById('toggle-bones');
-        const toggleHands = document.getElementById('toggle-hands');
-        const toggleGlow = document.getElementById('toggle-glow');
-
-        // Angle & Posture UI Outputs
-        const angleElbowL = document.getElementById('angle-elbow-l');
-        const angleElbowR = document.getElementById('angle-elbow-r');
-        const barElbowL = document.getElementById('bar-elbow-l');
-        const barElbowR = document.getElementById('bar-elbow-r');
-
-        const angleKneeL = document.getElementById('angle-knee-l');
-        const angleKneeR = document.getElementById('angle-knee-r');
-        const barKneeL = document.getElementById('bar-knee-l');
-        const barKneeR = document.getElementById('bar-knee-r');
-
-        const angleHipL = document.getElementById('angle-hip-l');
-        const angleHipR = document.getElementById('angle-hip-r');
-        const barHipL = document.getElementById('bar-hip-l');
-        const barHipR = document.getElementById('bar-hip-r');
-
-        const postureScoreText = document.getElementById('posture-score-text');
-        const postureScoreCircle = document.getElementById('posture-score-circle');
-        const postureStateBadge = document.getElementById('posture-state-badge');
-        const alignShoulders = document.getElementById('alignment-shoulders');
-        const alignHips = document.getElementById('alignment-hips');
-        const alignLeaning = document.getElementById('alignment-leaning');
-        const postureTips = document.getElementById('posture-tips');
-
-        let poseTracker = null;
-        let activeStream = null;
-        let frameCount = 0;
-        let fpsStartTime = performance.now();
-        let currentLiveLandmarks = null; // Stored to take snapshots of coordinates
-        let currentLiveAngles = {};
-
-        // Safe Alert Mechanism instead of alert()
-        function showAlert(msg) {
-            alertMessage.textContent = msg;
-            alertBanner.classList.remove('hidden');
-            alertBanner.classList.remove('translate-y-[-10px]');
-            alertBanner.classList.add('translate-y-0');
-            setTimeout(() => {
-                hideAlert();
-            }, 8000);
-        }
-
-        function hideAlert() {
-            alertBanner.classList.add('translate-y-[-10px]');
-            setTimeout(() => {
-                alertBanner.classList.add('hidden');
-            }, 300);
-        }
-
-        // Dismiss local protocol troubleshooting card
-        function dismissProtocolWarning() {
-            document.getElementById('protocol-warning').classList.add('hidden');
-        }
-
-        // Initialize theme selector
-        document.querySelectorAll('.theme-dot').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.theme-dot').forEach(b => b.classList.remove('ring-2', 'ring-teal-500', 'ring-offset-2', 'ring-offset-slate-100'));
-                e.target.classList.add('ring-2', 'ring-teal-500', 'ring-offset-2', 'ring-offset-slate-100');
-                state.activeColor = e.target.getAttribute('data-color');
-            });
+        let best = { d: 0.1, i: -1 };
+        poseData.forEach((p, i) => {
+            if (i > 10 && p.visibility > 0.1) {
+                const dist = Math.hypot(p.x - x, p.y - y);
+                if (dist < best.d) best = { d: dist, i };
+            }
         });
 
-        // Initialize options from UI toggles
-        function updateOptions() {
-            state.options.face = toggleFace.checked;
-            state.options.bones = toggleBones.checked;
-            state.options.hands = toggleHands.checked;
-            state.options.glow = toggleGlow.checked;
-        }
+        if (best.i !== -1) {
+            const lm = poseData[best.i];
+            state.selected.push({ ...lm, lmIndex: best.i });
 
-        [toggleFace, toggleBones, toggleHands, toggleGlow].forEach(el => el.addEventListener('change', updateOptions));
+            const num = state.selected.length;
+            const cx = lm.x * can.width;
+            const cy = lm.y * can.height;
 
-        // Get video input list
-        async function getDevices() {
-            try {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-                const devices = await navigator.mediaDevices.enumerateDevices();
-                const videoDevices = devices.filter(device => device.kind === 'videoinput');
-                
-                cameraSelect.innerHTML = '';
-                
-                // Add default device placeholder
-                const optDefault = document.createElement('option');
-                optDefault.value = "default";
-                optDefault.text = "Primary Native Camera";
-                cameraSelect.appendChild(optDefault);
-
-                if (videoDevices.length === 0) {
-                    return;
-                }
-
-                videoDevices.forEach((device, index) => {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    option.text = device.label || `Camera ${index + 1}`;
-                    cameraSelect.appendChild(option);
-                });
-            } catch (err) {
-                console.warn("Could not list video inputs: " + err.message);
-            }
-        }
-
-        // Helper Math to find 2D angle in degrees
-        function calculateAngle(A, B, C) {
-            if (!A || !B || !C) return 0;
-            const BA = { x: A.x - B.x, y: A.y - B.y };
-            const BC = { x: C.x - B.x, y: C.y - B.y };
-
-            const dotProduct = BA.x * BC.x + BA.y * BC.y;
-            const magBA = Math.sqrt(BA.x * BA.x + BA.y * BA.y);
-            const magBC = Math.sqrt(BC.x * BC.x + BC.y * BC.y);
-
-            if (magBA * magBC === 0) return 0;
-            
-            let cosTheta = dotProduct / (magBA * magBC);
-            cosTheta = Math.max(-1, Math.min(1, cosTheta));
-            
-            const angleRad = Math.acos(cosTheta);
-            return Math.round((angleRad * 180) / Math.PI);
-        }
-
-        // Updates Circular Progress Bar
-        function setPostureProgress(score) {
-            postureScoreText.textContent = `${score}%`;
-            const r = 28;
-            const circ = 2 * Math.PI * r;
-            const offset = circ - (score / 100) * circ;
-            postureScoreCircle.style.strokeDashoffset = offset;
-
-            // Handle warning banner triggers when posture score < 80
-            if (score < 80 && state.videoActive) {
-                postureBadBanner.classList.remove('-translate-y-full');
-                postureBadBanner.classList.add('translate-y-0');
-            } else {
-                postureBadBanner.classList.remove('translate-y-0');
-                postureBadBanner.classList.add('-translate-y-full');
-            }
-
-            if (score >= 90) {
-                postureScoreCircle.setAttribute('stroke', '#0d9488'); // Dark Teal
-                postureStateBadge.textContent = "Optimal";
-                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-teal-50 text-teal-700 border border-teal-200";
-            } else if (score >= 80) {
-                postureScoreCircle.setAttribute('stroke', '#0ea5e9'); // Light blue
-                postureStateBadge.textContent = "Good";
-                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-sky-50 text-sky-700 border border-sky-200";
-            } else if (score >= 65) {
-                postureScoreCircle.setAttribute('stroke', '#f97316'); // Orange
-                postureStateBadge.textContent = "Leaning";
-                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-orange-50 text-orange-700 border border-orange-200";
-            } else {
-                postureScoreCircle.setAttribute('stroke', '#ef4444'); // Red
-                postureStateBadge.textContent = "Needs Correction";
-                postureStateBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase bg-red-50 text-red-700 border border-red-200";
-            }
-        }
-
-        // Custom draw connectors with glowing properties
-        function drawSegment(ctx, p1, p2, color, thickness, hasGlow, widthRef, heightRef) {
-            if (!p1 || !p2 || p1.visibility < 0.5 || p2.visibility < 0.5) return;
-            
-            const w = widthRef || canvasElement.width;
-            const h = heightRef || canvasElement.height;
-
+            // Draw orange numbered circle
+            ctx.fillStyle = '#f97316';
             ctx.beginPath();
-            ctx.moveTo(p1.x * w, p1.y * h);
-            ctx.lineTo(p2.x * w, p2.y * h);
-
-            if (hasGlow) {
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 12;
-            } else {
-                ctx.shadowBlur = 0;
-            }
-
-            ctx.strokeStyle = color;
-            ctx.lineWidth = thickness;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-            ctx.shadowBlur = 0; // Reset
-        }
-
-        function drawJointDot(ctx, point, color, size, hasGlow, widthRef, heightRef) {
-            if (!point || point.visibility < 0.5) return;
-            
-            const w = widthRef || canvasElement.width;
-            const h = heightRef || canvasElement.height;
-
-            ctx.beginPath();
-            ctx.arc(point.x * w, point.y * h, size, 0, 2 * Math.PI);
-            ctx.fillStyle = color;
-            
-            if (hasGlow) {
-                ctx.shadowColor = color;
-                ctx.shadowBlur = 14;
-            }
+            ctx.arc(cx, cy, 14, 0, Math.PI * 2);
             ctx.fill();
-            ctx.shadowBlur = 0; // Reset
-            
-            // Outer concentric white circle for refined technology aesthetic
-            ctx.beginPath();
-            ctx.arc(point.x * w, point.y * h, size + 2, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-            ctx.lineWidth = 1.5;
-            ctx.stroke();
-        }
 
-        // Main Frame Callback for rendering skeletal lines over raw video
-        function onPoseResults(results) {
-            const now = performance.now();
-            const frameLatency = Math.round(now - state.lastFrameTime);
-            state.lastFrameTime = now;
-            
-            if (state.latencyCount < 10) {
-                state.latencySum += frameLatency;
-                state.latencyCount++;
-            } else {
-                latencyVal.textContent = `${Math.round(state.latencySum / state.latencyCount)}ms`;
-                state.latencySum = frameLatency;
-                state.latencyCount = 1;
-            }
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 12px DM Sans, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(num, cx, cy);
 
-            frameCount++;
-            const totalElapsed = now - fpsStartTime;
-            if (totalElapsed >= 1000) {
-                fpsVal.textContent = Math.round((frameCount * 1000) / totalElapsed);
-                frameCount = 0;
-                fpsStartTime = now;
-            }
-
-            // Draw to dynamic canvas with proper flipping for natural mirror view
-            canvasCtx.save();
-            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            
-            canvasCtx.translate(canvasElement.width, 0);
-            canvasCtx.scale(-1, 1);
-            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
-            canvasCtx.restore();
-
-            if (results.poseLandmarks) {
-                const landmarks = results.poseLandmarks;
-                currentLiveLandmarks = landmarks; // Cache to allow capturing exact landmark array coordinates
-
-                const drawBones = state.options.bones;
-                const drawFace = state.options.face;
-                const drawHands = state.options.hands;
-                const enableGlow = state.options.glow;
-                
-                const themeColor = state.activeColor;
-                const secondaryAccentColor = "#14b8a6"; // Teal accent
-                
-                // Track quality factor
-                let totalVis = 0;
-                landmarks.forEach(lm => totalVis += lm.visibility);
-                const meanConfidence = Math.round((totalVis / landmarks.length) * 100);
-                confidenceVal.textContent = `${meanConfidence}%`;
-                
-                if (meanConfidence > 75) {
-                    confidenceIndicator.className = "w-2.5 h-2.5 rounded-full bg-teal-500 inline-block";
-                } else if (meanConfidence > 50) {
-                    confidenceIndicator.className = "w-2.5 h-2.5 rounded-full bg-amber-500 inline-block";
-                } else {
-                    confidenceIndicator.className = "w-2.5 h-2.5 rounded-full bg-rose-500 inline-block animate-ping";
-                }
-
-                // Execute clinical alignment calculations
-                processPostureMetrics(landmarks);
-
-                const mirroredLandmarks = landmarks.map(lm => ({
-                    x: 1 - lm.x, 
-                    y: lm.y,
-                    z: lm.z,
-                    visibility: lm.visibility
-                }));
-
-                // Build joint skeletal structures
-                if (drawBones) {
-                    if (drawFace) {
-                        const nose = mirroredLandmarks[0];
-                        const leftEye = mirroredLandmarks[2];
-                        const rightEye = mirroredLandmarks[5];
-                        const leftEar = mirroredLandmarks[7];
-                        const rightEar = mirroredLandmarks[8];
-
-                        drawSegment(canvasCtx, nose, leftEye, '#94a3b8', 2, false);
-                        drawSegment(canvasCtx, nose, rightEye, '#94a3b8', 2, false);
-                        drawSegment(canvasCtx, leftEye, leftEar, '#cbd5e1', 1.5, false);
-                        drawSegment(canvasCtx, rightEye, rightEar, '#cbd5e1', 1.5, false);
-                    }
-
-                    // Upper Torso & Spine Structure
-                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[12], themeColor, 4, enableGlow); 
-                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[23], themeColor, 3.5, enableGlow); 
-                    drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[24], themeColor, 3.5, enableGlow); 
-                    drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[24], themeColor, 4, enableGlow); 
-
-                    // Upper extremities (Arms)
-                    drawSegment(canvasCtx, mirroredLandmarks[11], mirroredLandmarks[13], themeColor, 3, enableGlow);
-                    drawSegment(canvasCtx, mirroredLandmarks[13], mirroredLandmarks[15], themeColor, 3, enableGlow);
-                    drawSegment(canvasCtx, mirroredLandmarks[12], mirroredLandmarks[14], themeColor, 3, enableGlow);
-                    drawSegment(canvasCtx, mirroredLandmarks[14], mirroredLandmarks[16], themeColor, 3, enableGlow);
-
-                    // Lower extremities (Knees, Ankle, feet alignments)
-                    drawSegment(canvasCtx, mirroredLandmarks[23], mirroredLandmarks[25], themeColor, 3.5, enableGlow);
-                    drawSegment(canvasCtx, mirroredLandmarks[25], mirroredLandmarks[27], themeColor, 3.5, enableGlow);
-                    drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[29], themeColor, 2, false); 
-                    drawSegment(canvasCtx, mirroredLandmarks[29], mirroredLandmarks[31], themeColor, 2, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[27], mirroredLandmarks[31], themeColor, 2, false);
-
-                    drawSegment(canvasCtx, mirroredLandmarks[24], mirroredLandmarks[26], themeColor, 3.5, enableGlow);
-                    drawSegment(canvasCtx, mirroredLandmarks[26], mirroredLandmarks[28], themeColor, 3.5, enableGlow);
-                    drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[30], themeColor, 2, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[30], mirroredLandmarks[32], themeColor, 2, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[28], mirroredLandmarks[32], themeColor, 2, false);
-                }
-
-                // Render clinical visual nodes
-                if (drawFace) {
-                    [0, 2, 5, 7, 8].forEach(idx => {
-                        drawJointDot(canvasCtx, mirroredLandmarks[idx], '#f59e0b', 4.5, false);
-                    });
-                }
-
-                // Core major orthopedic joints
-                [11, 12, 13, 14, 23, 24, 25, 26, 27, 28].forEach(idx => {
-                    drawJointDot(canvasCtx, mirroredLandmarks[idx], themeColor, 6, enableGlow);
-                });
-
-                if (drawHands) {
-                    const leftHandGroup = [15, 17, 19, 21];
-                    const rightHandGroup = [16, 18, 20, 22];
-
-                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[17], secondaryAccentColor, 1.5, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[19], secondaryAccentColor, 1.5, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[15], mirroredLandmarks[21], secondaryAccentColor, 1.5, false);
-
-                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[18], secondaryAccentColor, 1.5, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[20], secondaryAccentColor, 1.5, false);
-                    drawSegment(canvasCtx, mirroredLandmarks[16], mirroredLandmarks[22], secondaryAccentColor, 1.5, false);
-
-                    leftHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], secondaryAccentColor, 4, false));
-                    rightHandGroup.forEach(idx => drawJointDot(canvasCtx, mirroredLandmarks[idx], secondaryAccentColor, 4, false));
-                }
+            if (state.selected.length === 3) {
+                drawAngleArc(ctx, can);
             }
         }
+    }
 
-        // Processing & Extracting Posture/Joint Analytics with Calibration Offsets
-        function processPostureMetrics(landmarks) {
-            const lShoulder = landmarks[11];
-            const rShoulder = landmarks[12];
-            const lElbow = landmarks[13];
-            const rElbow = landmarks[14];
-            const lWrist = landmarks[15];
-            const rWrist = landmarks[16];
-            const lHip = landmarks[23];
-            const rHip = landmarks[24];
-            const lKnee = landmarks[25];
-            const rKnee = landmarks[26];
-            const lAnkle = landmarks[27];
-            const rAnkle = landmarks[28];
-            const nose = landmarks[0];
+    function drawAngleArc(ctx, can) {
+        const [p1, p2, p3] = state.selected;
 
-            // 1. Compute Angles (using absolute trigonometry coordinate segments)
-            const flexElbowL = calculateAngle(lShoulder, lElbow, lWrist);
-            const flexElbowR = calculateAngle(rShoulder, rElbow, rWrist);
-            const flexKneeL = calculateAngle(lHip, lKnee, lAnkle);
-            const flexKneeR = calculateAngle(rHip, rKnee, rAnkle);
-            const flexHipL = calculateAngle(lShoulder, lHip, lKnee);
-            const flexHipR = calculateAngle(rShoulder, rHip, rKnee);
+        const x1 = p1.x * can.width, y1 = p1.y * can.height;
+        const x2 = p2.x * can.width, y2 = p2.y * can.height;
+        const x3 = p3.x * can.width, y3 = p3.y * can.height;
 
-            // Cache live angles for snapshot capture metadata
-            currentLiveAngles = {
-                flexElbowL, flexElbowR, flexKneeL, flexKneeR, flexHipL, flexHipR
-            };
+        // Draw lines (teal)
+        ctx.strokeStyle = '#14b8a6';
+        ctx.lineWidth = 4;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = '#14b8a6';
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x2, y2);
+        ctx.lineTo(x3, y3);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
 
-            // Update display values
-            angleElbowL.textContent = `${flexElbowL}°`;
-            angleElbowR.textContent = `${flexElbowR}°`;
-            barElbowL.style.width = `${Math.min(100, (flexElbowL / 180) * 100)}%`;
-            barElbowR.style.width = `${Math.min(100, (flexElbowR / 180) * 100)}%`;
+        // Arc
+        const startAngle = Math.atan2(y1 - y2, x1 - x2);
+        const endAngle = Math.atan2(y3 - y2, x3 - x2);
 
-            angleKneeL.textContent = `${flexKneeL}°`;
-            angleKneeR.textContent = `${flexKneeR}°`;
-            barKneeL.style.width = `${Math.min(100, (flexKneeL / 180) * 100)}%`;
-            barKneeR.style.width = `${Math.min(100, (flexKneeR / 180) * 100)}%`;
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(x2, y2, 48, startAngle, endAngle);
+        ctx.stroke();
 
-            angleHipL.textContent = `${flexHipL}°`;
-            angleHipR.textContent = `${flexHipR}°`;
-            barHipL.style.width = `${Math.min(100, (flexHipL / 180) * 100)}%`;
-            barHipR.style.width = `${Math.min(100, (flexHipR / 180) * 100)}%`;
+        // Angle calc
+        const angle = Math.abs(Math.atan2(p3.y - p2.y, p3.x - p2.x) - Math.atan2(p1.y - p2.y, p1.x - p2.x)) * 180 / Math.PI;
+        const displayAngle = Math.min(angle, 360 - angle);
 
-            // 2. Compute Alignments with Calibration Offsets
-            let postureScore = 100;
-            let feedbackTips = [];
+        // ROM label on canvas
+        const midX = (x1 + x2 + x3) / 3;
+        const midY = (y1 + y2 + y3) / 3 - 30;
 
-            // Calibration button triggers neutral reference calculation
-            if (window.pendingCalibration && lShoulder.visibility > 0.7 && rShoulder.visibility > 0.7 && lHip.visibility > 0.7) {
-                state.calibration.neutralShoulderDiff = lShoulder.y - rShoulder.y;
-                state.calibration.neutralHipDiff = lHip.y - rHip.y;
-                if (nose.visibility > 0.7) {
-                    const center = (lShoulder.x + rShoulder.x) / 2;
-                    state.calibration.neutralHeadDiff = nose.x - center;
-                }
-                state.calibration.calibrated = true;
-                window.pendingCalibration = false;
-                showAlert("Step2track calibration complete! Your current pose has been set as your healthy baseline.");
-            }
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        const label = `Elbow ROM: ${displayAngle.toFixed(0)}°`;
+        ctx.font = 'bold 18px DM Sans, sans-serif';
+        const tw = ctx.measureText(label).width;
+        ctx.roundRect(midX - tw / 2 - 10, midY - 16, tw + 20, 30, 6);
+        ctx.fill();
 
-            // Shoulder calculation
-            if (lShoulder.visibility > 0.6 && rShoulder.visibility > 0.6) {
-                let shoulderDelta = (lShoulder.y - rShoulder.y);
-                if (state.calibration.calibrated) {
-                    shoulderDelta -= state.calibration.neutralShoulderDiff;
-                }
-                const absoluteDiff = Math.abs(shoulderDelta);
-                
-                if (absoluteDiff > 0.03) {
-                    const penalty = Math.min(30, Math.round(absoluteDiff * 350));
-                    postureScore -= penalty;
-                    alignShoulders.textContent = "Uneven";
-                    alignShoulders.className = "font-mono text-rose-600 font-bold";
-                    feedbackTips.push("Balance shoulders.");
-                } else {
-                    alignShoulders.textContent = "Aligned";
-                    alignShoulders.className = "font-mono text-teal-600 font-bold";
-                }
-            } else {
-                alignShoulders.textContent = "Detecting...";
-                alignShoulders.className = "font-mono text-slate-400 font-bold";
-            }
+        ctx.fillStyle = '#0e7572';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, midX, midY);
 
-            // Hip level calculation
-            if (lHip.visibility > 0.6 && rHip.visibility > 0.6) {
-                let hipDelta = (lHip.y - rHip.y);
-                if (state.calibration.calibrated) {
-                    hipDelta -= state.calibration.neutralHipDiff;
-                }
-                const absoluteDiff = Math.abs(hipDelta);
+        document.getElementById('angle-display').textContent = `ROM: ${displayAngle.toFixed(1)}°`;
+    }
 
-                if (absoluteDiff > 0.035) {
-                    const penalty = Math.min(25, Math.round(absoluteDiff * 300));
-                    postureScore -= penalty;
-                    alignHips.textContent = "Tilted";
-                    alignHips.className = "font-mono text-rose-600 font-bold";
-                    feedbackTips.push("Distribute weight.");
-                } else {
-                    alignHips.textContent = "Balanced";
-                    alignHips.className = "font-mono text-teal-600 font-bold";
-                }
-            } else {
-                alignHips.textContent = "Detecting...";
-                alignHips.className = "font-mono text-slate-400 font-bold";
-            }
+    function resetAnalysis() {
+        state.selected = [];
+        document.getElementById('angle-display').textContent = 'Select 3 points';
+        if (!state.originalImageData || !state.currentPoseDataForAnalysis) return;
 
-            // Head lean alignment
-            if (nose.visibility > 0.6 && lShoulder.visibility > 0.6 && rShoulder.visibility > 0.6) {
-                const center = (lShoulder.x + rShoulder.x) / 2;
-                let headDelta = (nose.x - center);
-                if (state.calibration.calibrated) {
-                    headDelta -= state.calibration.neutralHeadDiff;
-                }
-                const absoluteDiff = Math.abs(headDelta);
-
-                if (absoluteDiff > 0.075) {
-                    const penalty = Math.min(25, Math.round(absoluteDiff * 220));
-                    postureScore -= penalty;
-                    alignLeaning.textContent = "Leaning";
-                    alignLeaning.className = "font-mono text-orange-500 font-bold";
-                    feedbackTips.push("Center your head.");
-                } else {
-                    alignLeaning.textContent = "Centered";
-                    alignLeaning.className = "font-mono text-teal-600 font-bold";
-                }
-            } else {
-                alignLeaning.textContent = "Detecting...";
-                alignLeaning.className = "font-mono text-slate-400 font-bold";
-            }
-
-            // Posture evaluation normalization
-            postureScore = Math.max(0, postureScore);
-            setPostureProgress(postureScore);
-
-            if (feedbackTips.length > 0) {
-                postureTips.textContent = feedbackTips.join(' ');
-            } else if (lShoulder.visibility > 0.5) {
-                postureTips.textContent = "Posture aligned. Maintain core activation.";
-            } else {
-                postureTips.textContent = "Please stand 2 meters from camera.";
-            }
-        }
-
-        // Initialize MediaPipe Pose Engine
-        function loadPoseEngine() {
-            try {
-                poseTracker = new Pose({
-                    locateFile: (file) => {
-                        return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
-                    }
-                });
-
-                poseTracker.setOptions({
-                    modelComplexity: parseInt(modelComplexitySelect.value),
-                    smoothLandmarks: true,
-                    enableSegmentation: false,
-                    smoothSegmentation: false,
-                    minDetectionConfidence: 0.55,
-                    minTrackingConfidence: 0.55
-                });
-
-                poseTracker.onResults(onPoseResults);
-                
-                state.modelLoaded = true;
-                loadProgress.style.width = "100%";
-                
-                setTimeout(() => {
-                    loadingOverlay.classList.add('opacity-0', 'pointer-events-none');
-                    statusPulse.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
-                    statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
-                    statusText.textContent = "Engine Ready";
-                }, 600);
-
-            } catch (err) {
-                showAlert("Failed to load clinical pose neural engine: " + err.message);
-                loadProgress.style.backgroundColor = "#ef4444";
-            }
-        }
-
-        // Handle model complexity selection adjustments
-        modelComplexitySelect.addEventListener('change', () => {
-            if (poseTracker) {
-                poseTracker.setOptions({
-                    modelComplexity: parseInt(modelComplexitySelect.value)
-                });
-            }
-        });
-
-        // Trigger manual frame pipeline
-        async function processFrameLoop() {
-            if (!state.videoActive) return;
-
-            try {
-                if (videoElement.readyState >= 2 && videoElement.videoWidth > 0) {
-                    await poseTracker.send({ image: videoElement });
-                }
-            } catch (err) {
-                console.warn("Pose skip:", err);
-            }
-
-            state.animationFrameId = requestAnimationFrame(processFrameLoop);
-        }
-
-        // Stop current active feed
-        function stopActiveStream() {
-            state.videoActive = false;
-            if (state.animationFrameId) {
-                cancelAnimationFrame(state.animationFrameId);
-                state.animationFrameId = null;
-            }
-            if (activeStream) {
-                activeStream.getTracks().forEach(track => track.stop());
-                activeStream = null;
-            }
-            videoElement.srcObject = null;
-            // Hide posture warning banner if stream turns off
-            postureBadBanner.classList.remove('translate-y-0');
-            postureBadBanner.classList.add('-translate-y-full');
-        }
-
-        // Initialize user device video with secure permission checks
-        async function startCameraSession() {
-            if (!state.modelLoaded) {
-                showAlert("Engine is currently loading weights. Please wait a moment.");
-                return;
-            }
-
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showAlert("Secure context protocol required. Verify you are using HTTPS on Vercel deployment.");
-                return;
-            }
-
-            const deviceId = cameraSelect.value;
-            let constraints = { audio: false };
-            if (deviceId && deviceId !== 'default') {
-                constraints.video = { deviceId: { exact: deviceId } };
-            } else {
-                constraints.video = {
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    facingMode: "user"
-                };
-            }
-
-            try {
-                stopActiveStream();
-
-                try {
-                    activeStream = await navigator.mediaDevices.getUserMedia(constraints);
-                } catch (fallbackErr) {
-                    console.warn("Target options denied. Requesting general camera...", fallbackErr);
-                    activeStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-                }
-
-                videoElement.srcObject = activeStream;
-                
-                videoElement.onloadedmetadata = () => {
-                    canvasElement.width = videoElement.videoWidth;
-                    canvasElement.height = videoElement.videoHeight;
-                    resolutionLabel.textContent = `Res: ${videoElement.videoWidth} x ${videoElement.videoHeight}`;
-                };
-
-                await videoElement.play();
-
-                state.videoActive = true;
-                processFrameLoop();
-
-                btnCameraText.textContent = "Pause Analytics";
-                btnCameraToggle.className = "col-span-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md active:scale-[0.98]";
-                
-                statusPulse.className = "animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75";
-                statusDot.className = "relative inline-flex rounded-full h-2.5 w-2.5 bg-teal-500";
-                statusText.textContent = "Active Tracking";
-                placeholder.classList.add('hidden');
-                canvasElement.classList.remove('opacity-0');
-                canvasElement.classList.add('opacity-100');
-
-                // Reload actual device list now that user has granted camera permissions
-                getDevices();
-
-            } catch (err) {
-                console.error("Camera access failed:", err);
-                
-                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-                    showAlert("Camera Permission Denied! Click the 'lock' icon in your browser URL search bar, allow camera permissions, and refresh.");
-                } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-                    showAlert("Hardware webcam is locked! Close other software using the camera (Zoom, MS Teams, OBS) and retry.");
-                } else {
-                    showAlert(`Access denied: Ensure HTTPS deployment context is active on Vercel.`);
-                }
-
-                state.videoActive = false;
-                btnCameraText.textContent = "Activate Webcam";
-            }
-        }
-
-        // Toggle webcam activity state
-        function toggleWebcam() {
-            if (state.videoActive) {
-                stopActiveStream();
-                btnCameraText.textContent = "Activate Webcam";
-                btnCameraToggle.className = "col-span-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-md active:scale-[0.98]";
-                
-                statusPulse.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
-                statusDot.className = "relative inline-flex rounded-full h-2 w-2 bg-yellow-500";
-                statusText.textContent = "Engine Paused";
-                placeholder.classList.remove('hidden');
-                canvasElement.classList.add('opacity-0');
-                canvasElement.classList.remove('opacity-100');
-            } else {
-                startCameraSession();
-            }
-        }
-
-        btnCameraToggle.addEventListener('click', toggleWebcam);
-
-        // Calibrate button event
-        btnCalibrate.addEventListener('click', () => {
-            if (!state.videoActive) {
-                showAlert("Please start the webcam and stand in view before calibrating.");
-                return;
-            }
-            window.pendingCalibration = true;
-            showAlert("Calibrating perfect posture... Stand straight in 3... 2... 1...");
-        });
-
-        // Capture snapshot from canvas frame
-        let snapCount = 0;
-        btnCapture.addEventListener('click', () => {
-            if (!state.videoActive) {
-                showAlert("Webcam feed is currently offline. Please activate the webcam first.");
-                return;
-            }
-
-            // Obtain static image content of processed canvas feed
-            const dataURL = canvasElement.toDataURL('image/png');
-            const frameId = `frame_${Date.now()}`;
-            
-            // Capture deeply nested deep clones of coordinates & posture diagnostics for local interaction
-            capturedFramesData[frameId] = {
-                imageSrc: dataURL,
-                landmarks: currentLiveLandmarks ? JSON.parse(JSON.stringify(currentLiveLandmarks)) : null,
-                angles: JSON.parse(JSON.stringify(currentLiveAngles)),
-                postureScore: postureScoreText.textContent,
-                shoulders: alignShoulders.textContent,
-                hips: alignHips.textContent,
-                leaning: alignLeaning.textContent,
-                shoulderClass: alignShoulders.className,
-                hipClass: alignHips.className,
-                leaningClass: alignLeaning.className
-            };
-
-            if (galleryEmptyText) {
-                galleryEmptyText.remove();
-            }
-
-            snapCount++;
-            galleryCountLabel.textContent = `${snapCount} frame${snapCount > 1 ? 's' : ''} captured`;
-
-            const card = document.createElement('div');
-            card.className = "relative min-w-[120px] w-[120px] aspect-video bg-slate-900 rounded-lg border border-slate-200 overflow-hidden group hover:border-teal-500 transition-all cursor-pointer shadow-sm";
-            card.setAttribute('data-frame-id', frameId);
-            
-            // Open snapshot modal on card click
-            card.addEventListener('click', () => {
-                openInspectorModal(frameId);
+        const aCanvas = document.getElementById('analysis-canvas');
+        const aCtx = aCanvas.getContext('2d');
+        const img = new Image();
+        img.src = state.originalImageData;
+        img.onload = () => {
+            aCtx.drawImage(img, 0, 0);
+            const filtered = state.currentPoseDataForAnalysis.map((lm, i) => {
+                if (i <= 10) return { ...lm, visibility: 0 };
+                return lm;
             });
-            
-            const img = document.createElement('img');
-            img.src = dataURL;
-            img.className = "w-full h-full object-cover";
-            
-            const overlay = document.createElement('div');
-            overlay.className = "absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 transition-opacity";
-            
-            const btnDl = document.createElement('a');
-            btnDl.href = dataURL;
-            btnDl.download = `step2track_capture_${Date.now()}.png`;
-            btnDl.innerHTML = `<i class="fa-solid fa-download text-white text-xs p-1.5 bg-teal-600 rounded hover:bg-teal-700 transition-colors"></i>`;
-            btnDl.addEventListener('click', (e) => e.stopPropagation()); // prevent modal trigger
-            
-            const btnDel = document.createElement('button');
-            btnDel.innerHTML = `<i class="fa-solid fa-trash text-white text-xs p-1.5 bg-rose-500 rounded hover:bg-rose-600 transition-colors"></i>`;
-            btnDel.addEventListener('click', (e) => {
-                e.stopPropagation();
-                card.remove();
-                delete capturedFramesData[frameId];
-                snapCount--;
-                galleryCountLabel.textContent = `${snapCount} frame${snapCount > 1 ? 's' : ''} captured`;
-                if (snapCount === 0) {
-                    snapshotGallery.appendChild(galleryEmptyText);
-                }
-            });
-
-            overlay.appendChild(btnDl);
-            overlay.appendChild(btnDel);
-            card.appendChild(img);
-            card.appendChild(overlay);
-
-            snapshotGallery.insertBefore(card, snapshotGallery.firstChild);
-            snapshotGallery.scrollLeft = 0;
-        });
-
-        // Modal Elements and Logic for Interactive Biometrics Inspector
-        const inspectorModal = document.getElementById('inspector-modal');
-        const modalCanvas = document.getElementById('modal-canvas');
-        const modalCanvasCtx = modalCanvas.getContext('2d');
-        const modalDownloadBtn = document.getElementById('modal-download-btn');
-        
-        const inspectorJointName = document.getElementById('inspector-joint-name');
-        const inspectorJointAngle = document.getElementById('inspector-joint-angle');
-        const inspectorDegUnit = document.getElementById('inspector-deg-unit');
-        const inspectorJointDesc = document.getElementById('inspector-joint-desc');
-        
-        const modalPostureScore = document.getElementById('modal-posture-score');
-        const modalShoulders = document.getElementById('modal-shoulders');
-        const modalHips = document.getElementById('modal-hips');
-        const modalLeaning = document.getElementById('modal-leaning');
-
-        let activeInspectorFrameId = null;
-
-        // Named joint indexes mapped to anatomical descriptions
-        const clinicalJointNodes = [
-            { index: 11, label: "Left Shoulder", group: "Shoulders" },
-            { index: 12, label: "Right Shoulder", group: "Shoulders" },
-            { index: 13, label: "Left Elbow Joint", group: "Elbow" },
-            { index: 14, label: "Right Elbow Joint", group: "Elbow" },
-            { index: 23, label: "Left Hip (Pelvis)", group: "Hip" },
-            { index: 24, label: "Right Hip (Pelvis)", group: "Hip" },
-            { index: 25, label: "Left Knee Joint", group: "Knee" },
-            { index: 26, label: "Right Knee Joint", group: "Knee" },
-            { index: 27, label: "Left Ankle Pivot", group: "Ankle" },
-            { index: 28, label: "Right Ankle Pivot", group: "Ankle" }
-        ];
-
-        function openInspectorModal(frameId) {
-            const frame = capturedFramesData[frameId];
-            if (!frame) return;
-
-            activeInspectorFrameId = frameId;
-            inspectorModal.classList.remove('hidden');
-
-            // Reset selected joint detail state
-            inspectorJointName.textContent = "No Joint Selected";
-            inspectorJointAngle.textContent = "--";
-            inspectorDegUnit.textContent = "";
-            inspectorJointDesc.textContent = "Click any joint node on the skeleton left to measure range of motion (ROM) angles.";
-
-            // Populating medical sidebar diagnostics captured at frame capture time
-            modalPostureScore.textContent = frame.postureScore;
-            modalShoulders.textContent = frame.shoulders;
-            modalShoulders.className = `font-bold ${frame.shoulderClass}`;
-            modalHips.textContent = frame.hips;
-            modalHips.className = `font-bold ${frame.hipClass}`;
-            modalLeaning.textContent = frame.leaning;
-            modalLeaning.className = `font-bold ${frame.leaningClass}`;
-
-            // Load original capture background to trace interactively
-            const bgImage = new Image();
-            bgImage.src = frame.imageSrc;
-            bgImage.onload = () => {
-                modalCanvas.width = bgImage.naturalWidth || 640;
-                modalCanvas.height = bgImage.naturalHeight || 480;
-                drawInspectorSkeleton(frame, bgImage);
-            };
-
-            // Set up export button for current active visual state
-            modalDownloadBtn.onclick = () => {
-                const link = document.createElement('a');
-                link.download = `step2track_diagnostic_${frameId}.png`;
-                link.href = modalCanvas.toDataURL('image/png');
-                link.click();
-            };
-        }
-
-        function drawInspectorSkeleton(frame, bgImage, highlightNodeIndex = null) {
-            modalCanvasCtx.clearRect(0, 0, modalCanvas.width, modalCanvas.height);
-            
-            // Draw background capture
-            modalCanvasCtx.drawImage(bgImage, 0, 0, modalCanvas.width, modalCanvas.height);
-
-            const landmarks = frame.landmarks;
-            if (!landmarks) return;
-
-            // Render mirrored/natural positions corresponding to saved canvas data
-            const mirroredLandmarks = landmarks.map(lm => ({
-                x: 1 - lm.x, 
-                y: lm.y,
-                z: lm.z,
-                visibility: lm.visibility
-            }));
-
-            const themeColor = state.activeColor;
-            const secondaryAccentColor = "#14b8a6";
-
-            // Draw interactive orthopedic lines
-            if (state.options.bones) {
-                // Shoulders to Pelvis Core Spine
-                drawSegment(modalCanvasCtx, mirroredLandmarks[11], mirroredLandmarks[12], themeColor, 4, false, modalCanvas.width, modalCanvas.height); 
-                drawSegment(modalCanvasCtx, mirroredLandmarks[11], mirroredLandmarks[23], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height); 
-                drawSegment(modalCanvasCtx, mirroredLandmarks[12], mirroredLandmarks[24], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height); 
-                drawSegment(modalCanvasCtx, mirroredLandmarks[23], mirroredLandmarks[24], themeColor, 4, false, modalCanvas.width, modalCanvas.height); 
-
-                // Upper Arms
-                drawSegment(modalCanvasCtx, mirroredLandmarks[11], mirroredLandmarks[13], themeColor, 3, false, modalCanvas.width, modalCanvas.height);
-                drawSegment(modalCanvasCtx, mirroredLandmarks[13], mirroredLandmarks[15], themeColor, 3, false, modalCanvas.width, modalCanvas.height);
-                drawSegment(modalCanvasCtx, mirroredLandmarks[12], mirroredLandmarks[14], themeColor, 3, false, modalCanvas.width, modalCanvas.height);
-                drawSegment(modalCanvasCtx, mirroredLandmarks[14], mirroredLandmarks[16], themeColor, 3, false, modalCanvas.width, modalCanvas.height);
-
-                // Lower Legs
-                drawSegment(modalCanvasCtx, mirroredLandmarks[23], mirroredLandmarks[25], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height);
-                drawSegment(modalCanvasCtx, mirroredLandmarks[25], mirroredLandmarks[27], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height);
-                drawSegment(modalCanvasCtx, mirroredLandmarks[24], mirroredLandmarks[26], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height);
-                drawSegment(modalCanvasCtx, mirroredLandmarks[26], mirroredLandmarks[28], themeColor, 3.5, false, modalCanvas.width, modalCanvas.height);
-            }
-
-            // Draw joint nodes
-            clinicalJointNodes.forEach(node => {
-                const point = mirroredLandmarks[node.index];
-                if (!point || point.visibility < 0.5) return;
-
-                const isHighlighted = (node.index === highlightNodeIndex);
-                const dotColor = isHighlighted ? "#f97316" : themeColor; // Highlight orange on select
-                const dotSize = isHighlighted ? 10 : 7;
-                
-                drawJointDot(modalCanvasCtx, point, dotColor, dotSize, isHighlighted, modalCanvas.width, modalCanvas.height);
-            });
-        }
-
-        // Catch canvas coordinate click events inside inspector modal
-        modalCanvas.addEventListener('click', (e) => {
-            const frame = capturedFramesData[activeInspectorFrameId];
-            if (!frame || !frame.landmarks) return;
-
-            const rect = modalCanvas.getBoundingClientRect();
-            const clickX = (e.clientX - rect.left) / rect.width; // 0 to 1 scaling factor
-            const clickY = (e.clientY - rect.top) / rect.height; // 0 to 1 scaling factor
-
-            // Track mirrored horizontal coordinates on clicked canvas relative space
-            const targetX = 1 - clickX;
-
-            let closestNode = null;
-            let minDistance = 0.05; // Selection bounding threshold
-
-            clinicalJointNodes.forEach(node => {
-                const lm = frame.landmarks[node.index];
-                if (!lm || lm.visibility < 0.5) return;
-
-                const distance = Math.hypot(lm.x - targetX, lm.y - clickY);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    closestNode = node;
-                }
-            });
-
-            if (closestNode) {
-                // Animate background trace with highlighted joint dot selection
-                const bgImage = new Image();
-                bgImage.src = frame.imageSrc;
-                bgImage.onload = () => {
-                    drawInspectorSkeleton(frame, bgImage, closestNode.index);
-                };
-
-                // Generate telemetry reporting metrics according to select node context
-                inspectorJointName.textContent = closestNode.label;
-                inspectorDegUnit.textContent = "°";
-
-                let specificAngle = 0;
-                let description = "";
-
-                if (closestNode.group === "Elbow") {
-                    specificAngle = (closestNode.index === 13) ? frame.angles.flexElbowL : frame.angles.flexElbowR;
-                    description = `Anatomical range of motion of the elbow joint. Healthy full extension is approx 180°, and full flex is approx 30°-40°. Measured: ${specificAngle}°.`;
-                } else if (closestNode.group === "Knee") {
-                    specificAngle = (closestNode.index === 25) ? frame.angles.flexKneeL : frame.angles.flexKneeR;
-                    description = `Anatomical range of motion of the knee hinge joint. Healthy full extension is approx 180°. Measured extension: ${specificAngle}°.`;
-                } else if (closestNode.group === "Hip") {
-                    specificAngle = (closestNode.index === 23) ? frame.angles.flexHipL : frame.angles.flexHipR;
-                    description = `Hip joint flexion representing the angle between the vertical spine line and the thigh femur axis. Measured: ${specificAngle}°.`;
-                } else if (closestNode.group === "Shoulders") {
-                    // Calculated relative slope slope angle
-                    const lS = frame.landmarks[11];
-                    const rS = frame.landmarks[12];
-                    const angleSlope = Math.round(Math.abs(Math.atan2(lS.y - rS.y, lS.x - rS.x) * (180 / Math.PI)));
-                    specificAngle = angleSlope;
-                    description = `Shoulder slope tilt relative to standard gravity horizon line. Ideal balance alignment level is 0°. Deviation slope detected: ${specificAngle}°.`;
-                } else if (closestNode.group === "Ankle") {
-                    specificAngle = 90; // Standard base ankle pivot default
-                    description = `Ankle dorsiflexion joint anchor pivot reference point. Useful for assessing squat/gait biomechanical alignment bounds.`;
-                }
-
-                inspectorJointAngle.textContent = specificAngle;
-                inspectorJointDesc.textContent = description;
-            }
-        });
-
-        function closeInspectorModal() {
-            inspectorModal.classList.add('hidden');
-            activeInspectorFrameId = null;
-        }
-
-        // Initialize setup on window load
-        window.onload = () => {
-            setTimeout(() => { loadProgress.style.width = "40%"; }, 200);
-            setTimeout(() => { loadProgress.style.width = "75%"; }, 400);
-            
-            if (window.location.protocol === 'file:') {
-                document.getElementById('protocol-warning').classList.remove('hidden');
-            } else {
-                getDevices();
-                loadPoseEngine();
-            }
-            updateOptions();
+            aCtx.shadowBlur = 10;
+            aCtx.shadowColor = '#14b8a6';
+            drawConnectors(aCtx, filtered, POSE_CONNECTIONS, { color: '#14b8a6', lineWidth: 3 });
+            aCtx.shadowBlur = 0;
+            drawLandmarks(aCtx, filtered.filter(l => l.visibility > 0.1), { color: '#ffffff', fillColor: '#0e7572', radius: 5 });
+            aCanvas.onclick = (e) => handlePointSelect(e, state.currentPoseDataForAnalysis, aCtx, aCanvas);
         };
-    </script>
+    }
+
+    function undoSelection() {
+        if (state.selected.length === 0) return;
+        state.selected.pop();
+        resetAnalysis();
+        // Re-draw remaining selected points
+        const aCanvas = document.getElementById('analysis-canvas');
+        const aCtx = aCanvas.getContext('2d');
+        state.selected.forEach((lm, idx) => {
+            const cx = lm.x * aCanvas.width;
+            const cy = lm.y * aCanvas.height;
+            aCtx.fillStyle = '#f97316';
+            aCtx.beginPath();
+            aCtx.arc(cx, cy, 14, 0, Math.PI * 2);
+            aCtx.fill();
+            aCtx.fillStyle = 'white';
+            aCtx.font = 'bold 12px DM Sans, sans-serif';
+            aCtx.textAlign = 'center';
+            aCtx.textBaseline = 'middle';
+            aCtx.fillText(idx + 1, cx, cy);
+        });
+        document.getElementById('angle-display').textContent = state.selected.length === 0 ? 'Select 3 points' : `Point ${state.selected.length}/3 selected`;
+    }
+
+    function downloadAnalysis() {
+        const aCanvas = document.getElementById('analysis-canvas');
+        if (!aCanvas || aCanvas.width === 0) return;
+        const a = document.createElement('a');
+        a.download = 'analysed-assessment.png';
+        a.href = aCanvas.toDataURL();
+        a.click();
+    }
+
+    function vergetAnalysis() {
+        // Placeholder for Verget Analysis feature
+        alert('Verget Analysis: Feature available in clinical mode.');
+    }
+
+    function updateStatusBar() {
+        document.getElementById('landmark-count').textContent = `Landmark Data storage: ${state.totalLandmarks}`;
+        const kb = (state.totalDataBytes / 1024).toFixed(0);
+        document.getElementById('data-size').textContent = `· data: ${kb} KB`;
+    }
+
+    // roundRect polyfill
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+            this.beginPath();
+            this.moveTo(x + r, y);
+            this.lineTo(x + w - r, y);
+            this.quadraticCurveTo(x + w, y, x + w, y + r);
+            this.lineTo(x + w, y + h - r);
+            this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            this.lineTo(x + r, y + h);
+            this.quadraticCurveTo(x, y + h, x, y + h - r);
+            this.lineTo(x, y + r);
+            this.quadraticCurveTo(x, y, x + r, y);
+            this.closePath();
+            return this;
+        };
+    }
+</script>
 </body>
 </html>
