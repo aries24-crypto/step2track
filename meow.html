@@ -110,10 +110,10 @@
             if(results.poseLandmarks) {
                 currentData = results.poseLandmarks;
                 const showPalms = document.getElementById('ctrl-palm').checked;
-                // Filter out face (0-10) always, and palms (15-22) if setting is unchecked
+                // Face: 0-10, Left Palm/Hand tip: 17, 19, 21, Right Palm/Hand tip: 18, 20, 22
                 const filtered = currentData.map((lm, i) => {
                     if (i <= 10) return {...lm, visibility: 0}; // Hide face
-                    if (!showPalms && (i >= 15 && i <= 22)) return {...lm, visibility: 0}; // Hide palms
+                    if (!showPalms && [17, 19, 21, 18, 20, 22].includes(i)) return {...lm, visibility: 0}; // Only hide palm tips
                     return lm;
                 });
                 
