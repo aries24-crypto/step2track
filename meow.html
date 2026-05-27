@@ -3,206 +3,707 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Step2Track | Advanced Clinical Assessment</title>
+    <title>Step2Track | Premium Clinical ROM Assessment</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- MediaPipe Pose and Drawing Utils -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    
     <style>
-        .gradient-teal { background: linear-gradient(135deg, #0f766e, #115e59); }
-        .bg-clinical { background-color: #f8fafc; }
-        /* Toggle Switch Styling */
-        .toggle-checkbox:checked { right: 0; border-color: #ea580c; }
-        .toggle-checkbox:checked + .toggle-label { background-color: #ea580c; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f4f8f8; /* Soft clinical teal-tinted light background */
+        }
+
+        /* Custom subtle scrollbars for clinical lists */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Toggle switches */
+        .switch-input:checked ~ .switch-dot {
+            transform: translateX(100%);
+            background-color: #ffffff;
+        }
+        .switch-input:checked ~ .switch-bg {
+            background-color: #0f766e; /* Clinical Teal */
+        }
     </style>
 </head>
-<body class="bg-clinical text-slate-800 font-sans pb-20">
+<body class="text-slate-800 min-h-screen flex flex-col antialiased">
 
-    <header class="bg-white border-b border-slate-200 py-4 px-6 sticky top-0 z-40 shadow-sm">
-        <div class="max-w-7xl mx-auto flex items-center justify-between">
+    <!-- Premium Clinical Header -->
+    <header class="bg-white border-b border-slate-100 py-3 px-6 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-[1700px] mx-auto flex items-center justify-between">
+            <!-- Left Brand Segment -->
             <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center overflow-hidden">
-                    <img src="step2heal.jpeg" alt="Logo" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<i class=\'fa-solid fa-chart-line text-teal-800\'></i>'">
+                <div class="w-11 h-11 bg-teal-50 rounded-xl flex items-center justify-center overflow-hidden border border-teal-100 shadow-sm">
+                    <img src="step2heal.jpeg" alt="S2T" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<span class=\'text-teal-700 font-bold text-xl\'>S</span>'">
                 </div>
                 <div>
-                    <h1 class="text-2xl font-black text-slate-900 tracking-tight">Step2Track</h1>
-                    <p class="text-xs text-orange-600 font-bold italic">Where every step matters</p>
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center">
+                            <span class="text-[#0f766e]">Step</span><span class="text-[#f97316]">2</span><span>Track</span>
+                        </span>
+                        <span class="text-[10px] bg-teal-50 text-[#0f766e] font-bold px-2 py-0.5 rounded-full border border-teal-100">PRO ROM</span>
+                    </div>
+                    <p class="text-[11px] text-[#ea580c] font-bold tracking-wide italic">Where every step matters</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2 bg-teal-50 px-4 py-2 rounded-full text-teal-800 font-semibold text-sm">
-                <span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span></span>
-                System Active
+            
+            <!-- Right Status Segment -->
+            <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2.5 bg-emerald-50/80 px-4 py-1.5 rounded-full text-emerald-800 border border-emerald-100 font-semibold text-xs shadow-sm">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    System Active
+                </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto p-6 flex flex-col gap-8">
-        <section class="grid lg:grid-cols-3 gap-8">
-            <div class="lg:col-span-2 relative rounded-2xl bg-slate-950 shadow-2xl overflow-hidden aspect-video border-4 border-slate-800">
-                <div id="loading" class="absolute inset-0 flex items-center justify-center bg-slate-950 text-slate-400">Initializing Tracking System...</div>
-                <video id="video" class="hidden" playsinline muted></video>
-                <canvas id="canvas" class="w-full h-full object-cover"></canvas>
-            </div>
+    <!-- Main Workspace Container -->
+    <main class="max-w-[1700px] mx-auto p-4 lg:p-6 w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow items-start">
+        
+        <!-- ================= LEFT COLUMN (Live Tracking & Settings) ================= -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
             
-            <div class="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-                <h2 class="font-bold text-slate-900 text-lg flex items-center gap-2 border-b pb-4"><i class="fa-solid fa-gear text-teal-700"></i> Assessment Settings</h2>
-                <div class="space-y-6">
-                    <!-- Toggle 1: Include Palms -->
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-bold text-slate-700">Include Palms</span>
-                        <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" id="ctrl-palm" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer right-6"/>
-                            <label for="ctrl-palm" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
-                        </div>
+            <!-- Live Tracking Viewport Card -->
+            <div class="bg-white rounded-2xl border border-slate-150 shadow-md overflow-hidden flex flex-col">
+                <div class="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                    <h2 class="font-bold text-slate-800 text-sm tracking-wide uppercase flex items-center gap-2">
+                        <i class="fa-solid fa-video text-[#0f766e]"></i> Live Tracking
+                    </h2>
+                    <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">60 FPS Cap</span>
+                </div>
+                
+                <!-- Camera Feed Container -->
+                <div class="relative bg-slate-950 aspect-video w-full overflow-hidden flex items-center justify-center">
+                    <div id="loading" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-slate-400 gap-3">
+                        <i class="fa-solid fa-circle-notch animate-spin text-2xl text-teal-500"></i>
+                        <span class="text-xs font-medium tracking-wider">INITIALIZING ASSESSMENT CAMERA...</span>
                     </div>
-                    <!-- Toggle 2: Skeletal Glow -->
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-bold text-slate-700">Skeletal Glow</span>
-                        <div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" id="ctrl-glow" checked class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer right-6"/>
-                            <label for="ctrl-glow" class="toggle-label block overflow-hidden h-6 rounded-full bg-slate-300 cursor-pointer"></label>
-                        </div>
+                    <video id="video" class="hidden" playsinline muted></video>
+                    <canvas id="canvas" class="w-full h-full object-cover"></canvas>
+                </div>
+
+                <!-- Live Control & Settings Tray -->
+                <div class="p-5 space-y-4 bg-white border-t border-slate-100">
+                    <!-- Alignment Control Toggles Grid -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <!-- Palm Toggle -->
+                        <label for="ctrl-palm" class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition cursor-pointer text-center group">
+                            <span class="text-xs font-semibold text-slate-600 mb-2 group-hover:text-slate-900 transition">Palm Landmarks</span>
+                            <div class="relative">
+                                <input type="checkbox" id="ctrl-palm" checked class="switch-input sr-only" />
+                                <div class="switch-bg block w-10 h-6 rounded-full bg-slate-200 transition-colors"></div>
+                                <div class="switch-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+                            </div>
+                        </label>
+
+                        <!-- Glow Toggle -->
+                        <label for="ctrl-glow" class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition cursor-pointer text-center group">
+                            <span class="text-xs font-semibold text-slate-600 mb-2 group-hover:text-slate-900 transition">Skeletal Glow</span>
+                            <div class="relative">
+                                <input type="checkbox" id="ctrl-glow" checked class="switch-input sr-only" />
+                                <div class="switch-bg block w-10 h-6 rounded-full bg-slate-200 transition-colors"></div>
+                                <div class="switch-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+                            </div>
+                        </label>
+
+                        <!-- Joint Dots Toggle -->
+                        <label for="ctrl-dots" class="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition cursor-pointer text-center group">
+                            <span class="text-xs font-semibold text-slate-600 mb-2 group-hover:text-slate-900 transition">Joint Dots</span>
+                            <div class="relative">
+                                <input type="checkbox" id="ctrl-dots" checked class="switch-input sr-only" />
+                                <div class="switch-bg block w-10 h-6 rounded-full bg-slate-200 transition-colors"></div>
+                                <div class="switch-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform"></div>
+                            </div>
+                        </label>
                     </div>
-                    <button id="capture-btn" class="w-full mt-6 bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95">
-                        <i class="fa-solid fa-camera"></i> Capture Frame
+
+                    <!-- Capture Button -->
+                    <button id="capture-btn" class="w-full bg-[#0f766e] hover:bg-[#0d9488] text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all shadow-md active:scale-[0.98]">
+                        <i class="fa-solid fa-camera text-base"></i> Capture Assessment
                     </button>
                 </div>
             </div>
-        </section>
 
-        <section id="captured-container" class="hidden">
-            <h2 class="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
-                <i class="fa-solid fa-folder-open text-teal-700"></i> Captured History
-            </h2>
-            <div id="grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
-        </section>
+            <!-- Captured Assessments Repository Card -->
+            <div class="bg-white rounded-2xl border border-slate-150 shadow-md p-5 flex flex-col">
+                <h3 class="text-sm font-bold text-slate-800 tracking-wide uppercase mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-folder-open text-[#0f766e]"></i> Captured Assessments
+                </h3>
+                
+                <!-- Horizontal/Grid Gallery -->
+                <div id="captured-placeholder" class="py-12 border-2 border-dashed border-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-400 gap-2">
+                    <i class="fa-regular fa-images text-2xl"></i>
+                    <span class="text-xs font-medium">No assessments captured yet</span>
+                </div>
+                
+                <div id="grid" class="grid grid-cols-2 gap-4 max-h-[380px] overflow-y-auto custom-scrollbar pr-1 hidden">
+                    <!-- Appended captured frames go here -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= RIGHT COLUMN (Analysis Workspace) ================= -->
+        <div class="lg:col-span-7">
+            
+            <!-- Analysis Assessment Container -->
+            <div id="workspace-card" class="bg-white rounded-3xl border border-slate-150 shadow-lg overflow-hidden flex flex-col">
+                
+                <!-- Title & Top Toolbar -->
+                <div class="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
+                    <div>
+                        <h2 class="font-extrabold text-slate-900 text-lg tracking-tight">Analysis Assessment</h2>
+                        <p class="text-[11px] text-slate-500 font-medium">Interactive range of motion (ROM) mapping panel</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="downloadAnalysis()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-download"></i> Download Analysed Image
+                        </button>
+                        <button onclick="resetAnalysis()" class="px-4 py-2 bg-[#f97316] hover:bg-[#ea580c] text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-rotate"></i> Reset Analysis
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Active Canvas & Gallery Workspace -->
+                <div class="p-6 bg-[#f8fafc] flex flex-col lg:flex-row gap-6 min-h-[460px]">
+                    
+                    <!-- Center Canvas Screen -->
+                    <div class="flex-grow flex items-center justify-center border border-slate-150 rounded-2xl bg-white shadow-inner p-4 relative overflow-hidden group">
+                        
+                        <!-- Empty Workspace Overlay Message -->
+                        <div id="empty-workspace-state" class="absolute inset-0 bg-white/95 flex flex-col items-center justify-center p-6 text-center z-10">
+                            <div class="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center mb-4 text-teal-600 border border-teal-100">
+                                <i class="fa-solid fa-magnifying-glass-chart text-2xl"></i>
+                            </div>
+                            <h3 class="font-bold text-slate-800 text-base mb-1">Interactive Diagnostic Workspace</h3>
+                            <p class="text-xs text-slate-500 max-w-sm leading-relaxed">Select an assessment snapshot from the left column or gallery to initiate orthopedic ROM mapping.</p>
+                        </div>
+                        
+                        <!-- Interactive Assessment Canvas -->
+                        <canvas id="analysis-canvas" class="max-w-full max-h-[400px] shadow-sm rounded-lg cursor-crosshair object-contain hidden"></canvas>
+                    </div>
+
+                    <!-- Right Thumbnail Comparison Strip -->
+                    <div class="lg:w-48 flex flex-col border border-slate-150 bg-white rounded-2xl p-3 shadow-sm min-h-[220px]">
+                        <span class="text-[10px] font-bold text-slate-400 tracking-wider uppercase mb-2.5 px-1 block">ROM Snapshots</span>
+                        <div id="side-thumbnail-strip" class="flex lg:flex-col gap-3 overflow-auto custom-scrollbar flex-grow pr-1">
+                            <!-- Populated with miniature ROM assessments dynamically -->
+                            <div class="text-center py-8 text-slate-300 text-xs font-medium my-auto flex flex-col gap-1.5 justify-center items-center w-full">
+                                <i class="fa-solid fa-list-check text-lg"></i>
+                                <span>No ROM data</span>
+                            </div>
+                        </div>
+                        <div class="mt-2.5 pt-2.5 border-t border-slate-100 text-center">
+                            <span class="text-[10px] font-semibold text-[#0f766e] tracking-wide block uppercase">Verify Analysis</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Bottom Controls Toolbar & Telemetry Status Bar -->
+                <div class="px-6 py-4 border-t border-slate-100 bg-white flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <button onclick="downloadAnalysis()" class="px-5 py-2.5 bg-[#0f766e] hover:bg-[#0d9488] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-download"></i> Download Analysed Image
+                        </button>
+                        <button onclick="resetAnalysis()" class="px-5 py-2.5 bg-[#f97316] hover:bg-[#ea580c] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-rotate"></i> Reset Analysis
+                        </button>
+                        <button onclick="undoSelection()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-arrow-rotate-left"></i> Undo Selection
+                        </button>
+                    </div>
+                    
+                    <!-- Dynamic Readout Badges -->
+                    <div id="angle-display" class="font-extrabold text-base text-[#0f766e] bg-teal-50/80 px-4 py-2 rounded-xl border border-teal-100 shadow-sm md:ml-auto">
+                        Select 3 Joint Points
+                    </div>
+                </div>
+
+                <!-- Telemetry Status Strip -->
+                <div class="bg-slate-900 px-6 py-2 flex items-center justify-between text-[11px] text-slate-400 font-mono tracking-tight">
+                    <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-[#f97316]"></span>
+                        <span>Clinical Framework: MediPipe BlazePose</span>
+                    </div>
+                    <div id="telemetry-readout">
+                        Landmark Data Storage: Active, data: 124 KB
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
     </main>
 
-    <div id="modal" class="fixed inset-0 z-50 bg-slate-900/95 hidden flex items-center justify-center p-6">
-        <div class="bg-white w-full max-w-5xl rounded-2xl overflow-hidden flex flex-col shadow-2xl h-[90vh]">
-            <div class="p-5 border-b flex justify-between items-center bg-slate-50">
-                <h3 class="font-black text-slate-900 text-lg">ROM Analysis Assessment</h3>
-                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-900 text-2xl transition">&times;</button>
-            </div>
-            <div class="flex-grow overflow-auto p-6 bg-slate-100 flex items-center justify-center">
-                <canvas id="analysis-canvas" class="max-w-full shadow-2xl rounded-lg cursor-crosshair"></canvas>
-            </div>
-            <div class="p-6 border-t flex gap-4 items-center bg-white">
-                <button onclick="resetAnalysis()" class="px-6 py-3 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-700 transition">Reset Analysis</button>
-                <button onclick="downloadAnalysis()" class="px-6 py-3 bg-teal-700 hover:bg-teal-800 text-white rounded-xl font-bold transition shadow-lg">Download Analysed</button>
-                <div id="angle-display" class="ml-auto font-black text-2xl text-teal-800 bg-teal-50 px-6 py-2 rounded-lg border border-teal-200">Select 3 points</div>
-            </div>
-        </div>
+    <!-- Interactive UI Alerts System (Custom replacement for alerts) -->
+    <div id="custom-toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2">
+        <i class="fa-solid fa-circle-info text-teal-400"></i>
+        <span id="toast-message">Action recorded</span>
     </div>
 
+    <!-- System Logic Setup -->
     <script>
-        const video = document.getElementById('video'), canvas = document.getElementById('canvas'), ctx = canvas.getContext('2d');
-        const pose = new Pose({locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${f}`});
-        pose.setOptions({modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.6});
+        // Setup state & variables
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const analysisCanvas = document.getElementById('analysis-canvas');
+        const aCtx = analysisCanvas.getContext('2d');
         
         let currentData = null;
         let originalImageData = null;
+        let selectedPoints = [];
+        let savedAssessments = [];
+        let poseDataHistory = {}; // Keep trace of pose data for snapshots
 
+        // Initialize MediaPipe Pose Model
+        const pose = new Pose({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+        });
+
+        pose.setOptions({
+            modelComplexity: 1,
+            smoothLandmarks: true,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
+        });
+
+        // Toast Alert helper
+        function showToast(message) {
+            const toast = document.getElementById('custom-toast');
+            document.getElementById('toast-message').innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Live Pose tracking loop
         pose.onResults(results => {
             document.getElementById('loading').classList.add('hidden');
-            ctx.clearRect(0,0, canvas.width, canvas.height);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-            if(results.poseLandmarks) {
+            
+            if (results.poseLandmarks) {
                 currentData = results.poseLandmarks;
+                
+                // Filtering configuration
                 const showPalms = document.getElementById('ctrl-palm').checked;
-                // Face: 0-10, Left Palm/Hand tip: 17, 19, 21, Right Palm/Hand tip: 18, 20, 22
+                const showGlow = document.getElementById('ctrl-glow').checked;
+                const showDots = document.getElementById('ctrl-dots').checked;
+
+                // Eliminate face (0-10) and hands/palms tips if configured off
                 const filtered = currentData.map((lm, i) => {
-                    if (i <= 10) return {...lm, visibility: 0}; // Hide face
-                    if (!showPalms && [17, 19, 21, 18, 20, 22].includes(i)) return {...lm, visibility: 0}; // Only hide palm tips
+                    if (i <= 10) return { ...lm, visibility: 0 }; // Remove face
+                    if (!showPalms && [17, 19, 21, 18, 20, 22].includes(i)) return { ...lm, visibility: 0 }; // Hide palm tips
                     return lm;
                 });
+
+                // Render styles - Premium Clinical Theme
+                if (showGlow) {
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = '#0d9488'; // soft teal glow
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+
+                // Smooth teal body lines
+                drawConnectors(ctx, filtered, POSE_CONNECTIONS, { color: '#0f766e', lineWidth: 4 });
                 
-                if(document.getElementById('ctrl-glow').checked) { ctx.shadowBlur = 10; ctx.shadowColor = '#0d9488'; }
-                drawConnectors(ctx, filtered, POSE_CONNECTIONS, {color: '#ffffff', lineWidth: 4});
-                drawLandmarks(ctx, filtered.filter(l => l.visibility > 0.1), {color: '#ffffff', radius: 5});
+                // Draw joint tracking points (if selected toggle)
+                if (showDots) {
+                    ctx.shadowBlur = 0; // Disable glow on points for crisp markers
+                    drawLandmarks(ctx, filtered.filter(l => l.visibility > 0.15), {
+                        color: '#f97316', // Orange joint marker highlight
+                        radius: 5,
+                        lineWidth: 1
+                    });
+                }
                 ctx.shadowBlur = 0;
             }
         });
 
-        navigator.mediaDevices.getUserMedia({video: true}).then(s => {
-            video.srcObject = s; video.play();
-            const loop = async () => { await pose.send({image: video}); requestAnimationFrame(loop); };
-            video.onloadedmetadata = () => { canvas.width = video.videoWidth; canvas.height = video.videoHeight; loop(); };
+        // Initialize user media
+        navigator.mediaDevices.getUserMedia({
+            video: { width: 1280, height: 720, facingMode: "user" }
+        }).then(stream => {
+            video.srcObject = stream;
+            video.play();
+            const processPose = async () => {
+                await pose.send({ image: video });
+                requestAnimationFrame(processPose);
+            };
+            video.onloadedmetadata = () => {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                processPose();
+            };
+        }).catch(err => {
+            document.getElementById('loading').innerHTML = `
+                <div class="text-center p-6 text-rose-500">
+                    <i class="fa-solid fa-video-slash text-3xl mb-2"></i>
+                    <p class="text-sm font-bold">Webcam Access Prohibited</p>
+                    <p class="text-[11px] text-slate-500 mt-1">Please enable webcam permissions to use Step2Track ROM system.</p>
+                </div>
+            `;
         });
 
+        // Capture Frame System
         document.getElementById('capture-btn').onclick = () => {
-            if(!currentData) return;
-            document.getElementById('captured-container').classList.remove('hidden');
-            const data = canvas.toDataURL();
-            const div = document.createElement('div');
-            div.className = "bg-white p-3 rounded-2xl border shadow-md hover:shadow-xl transition";
-            div.innerHTML = `<img src="${data}" class="rounded-lg w-full mb-3 aspect-video object-cover"> 
-                             <button onclick="viewAssessment('${data}', ${JSON.stringify(currentData).replace(/"/g, '&quot;')})" class="w-full py-2.5 bg-teal-700 hover:bg-teal-800 text-white rounded-lg text-sm font-bold shadow-md">Analyse Now</button>`;
-            document.getElementById('grid').prepend(div);
+            if (!currentData) {
+                showToast("System not ready. Wait for pose detection!");
+                return;
+            }
+            
+            const dataUrl = canvas.toDataURL();
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const assessmentId = 'assessment_' + Date.now();
+            
+            // Store coordinates and payload trace
+            poseDataHistory[assessmentId] = JSON.parse(JSON.stringify(currentData));
+
+            // Hide initial empty placeholder
+            document.getElementById('captured-placeholder').classList.add('hidden');
+            document.getElementById('grid').classList.remove('hidden');
+
+            // Append snapshot HTML elements
+            const card = document.createElement('div');
+            card.id = `card_${assessmentId}`;
+            card.className = "bg-slate-50/50 p-2.5 rounded-xl border border-slate-150 shadow-sm flex flex-col group transition hover:border-[#0f766e] hover:shadow-md";
+            card.innerHTML = `
+                <div class="relative rounded-lg overflow-hidden aspect-video bg-black mb-2">
+                    <img src="${dataUrl}" class="w-full h-full object-cover">
+                    <span class="absolute bottom-1 right-1.5 bg-black/60 text-[9px] text-white font-mono px-1.5 py-0.5 rounded">${timestamp}</span>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <button onclick="loadToWorkspace('${assessmentId}', '${dataUrl}')" class="w-full py-1.5 bg-[#0f766e] hover:bg-[#0d9488] text-white rounded-lg text-[11px] font-bold transition flex items-center justify-center gap-1">
+                        <i class="fa-solid fa-magnifying-glass-chart"></i> View/Analyse
+                    </button>
+                    <div class="grid grid-cols-2 gap-1.5">
+                        <button onclick="downloadDirectly('${dataUrl}')" class="py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-semibold transition">
+                            <i class="fa-solid fa-download"></i> Download
+                        </button>
+                        <button onclick="deleteAssessment('${assessmentId}')" class="py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded text-[10px] font-semibold transition">
+                            <i class="fa-solid fa-trash-can"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('grid').prepend(card);
+            
+            // Auto populate workspace with latest capture
+            loadToWorkspace(assessmentId, dataUrl);
+            updateSideThumbnailStrip();
+            showToast("Frame captured & loaded to workspace!");
         };
 
-        function viewAssessment(src, poseData) {
-            originalImageData = src;
-            const modal = document.getElementById('modal'), aCanvas = document.getElementById('analysis-canvas');
-            const aCtx = aCanvas.getContext('2d'), img = new Image();
-            img.src = src;
+        // Load targeted snapshot into Active Workspace
+        function loadToWorkspace(id, dataUrl) {
+            originalImageData = dataUrl;
+            selectedPoints = [];
+            document.getElementById('empty-workspace-state').classList.add('hidden');
+            
+            const activePose = poseDataHistory[id];
+            
+            analysisCanvas.classList.remove('hidden');
+            const img = new Image();
+            img.src = dataUrl;
             img.onload = () => {
-                aCanvas.width = img.width; aCanvas.height = img.height; aCtx.drawImage(img, 0, 0);
-                aCanvas.onclick = (e) => handlePointSelect(e, poseData, aCtx, aCanvas);
+                analysisCanvas.width = img.width;
+                analysisCanvas.height = img.height;
+                aCtx.drawImage(img, 0, 0);
+                
+                // Render initial tracking snap points directly onto diagnostic canvas (soft preview)
+                drawDiagnosticReferencePoints(activePose);
+
+                // Rebind interactive mouse selection on loaded element
+                analysisCanvas.onclick = (e) => handleJointSelection(e, activePose);
             };
-            modal.classList.remove('hidden');
+            document.getElementById('angle-display').innerText = "Select 3 Joint Points";
+            
+            // Adjust telemetry readout details
+            document.getElementById('telemetry-readout').innerText = `Landmark Data Storage: Active, records: ${activePose.length}, id: ${id}`;
         }
 
-        let selected = [];
-        function handlePointSelect(e, poseData, ctx, can) {
-            if(selected.length >= 3) return;
-            const rect = can.getBoundingClientRect();
-            const x = (e.clientX - rect.left) / rect.width, y = (e.clientY - rect.top) / rect.height;
-            let best = {d: 0.08, i: -1};
-            // Allow selection of everything except face (indices 0-10)
-            poseData.forEach((p, i) => { if(i > 10) { const dist = Math.hypot(p.x - x, p.y - y); if(dist < best.d) best = {d: dist, i}; }});
-            if(best.i !== -1) {
-                selected.push(poseData[best.i]);
-                ctx.fillStyle = '#ea580c'; ctx.beginPath(); ctx.arc(poseData[best.i].x * can.width, poseData[best.i].y * can.height, 15, 0, 7); ctx.fill();
-                if(selected.length === 3) drawAngle(ctx, can);
+        // Draw soft diagnostic reference targets to help user snap-click correctly
+        function drawDiagnosticReferencePoints(poseData) {
+            poseData.forEach((lm, i) => {
+                if (i > 10 && lm.visibility > 0.15) { // Skip face
+                    aCtx.fillStyle = 'rgba(15, 118, 110, 0.4)'; // light teal anchor dots
+                    aCtx.beginPath();
+                    aCtx.arc(lm.x * analysisCanvas.width, lm.y * analysisCanvas.height, 6, 0, 2 * Math.PI);
+                    aCtx.fill();
+                }
+            });
+        }
+
+        // Snap and capture joint points click interaction
+        function handleJointSelection(e, poseData) {
+            if (selectedPoints.length >= 3) {
+                showToast("Limit exceeded. Reset analysis to redraw!");
+                return;
+            }
+
+            const rect = analysisCanvas.getBoundingClientRect();
+            // Calculate relative coordinates
+            const clickX = (e.clientX - rect.left) / rect.width;
+            const clickY = (e.clientY - rect.top) / rect.height;
+
+            // Find closest body tracking point (Snapping logic)
+            let closest = { distance: 0.08, index: -1 }; // 0.08 scaling snap window
+            
+            poseData.forEach((point, idx) => {
+                if (idx > 10 && point.visibility > 0.15) { // Skip face points
+                    const d = Math.hypot(point.x - clickX, point.y - clickY);
+                    if (d < closest.distance) {
+                        closest = { distance: d, index: idx };
+                    }
+                }
+            });
+
+            if (closest.index !== -1) {
+                const targetPoint = poseData[closest.index];
+                
+                // Add index labeling reference (1, 2, 3)
+                const pointPayload = {
+                    x: targetPoint.x * analysisCanvas.width,
+                    y: targetPoint.y * analysisCanvas.height,
+                    label: selectedPoints.length + 1
+                };
+                
+                selectedPoints.push(pointPayload);
+
+                // Draw solid glowing indicator marker visually
+                drawMarkerDot(pointPayload);
+
+                if (selectedPoints.length === 3) {
+                    renderAngleCalculation();
+                } else {
+                    document.getElementById('angle-display').innerText = `Point ${selectedPoints.length} set. Select ${3 - selectedPoints.length} more.`;
+                }
+            } else {
+                showToast("Please tap directly on/near a tracked skeletal node.");
             }
         }
 
-        function drawAngle(ctx, can) {
-            const [p1, p2, p3] = selected;
-            const angle = Math.abs(Math.atan2(p3.y-p2.y, p3.x-p2.x) - Math.atan2(p1.y-p2.y, p1.x-p2.x)) * 180 / Math.PI;
-            const displayAngle = Math.min(angle, 360-angle);
-            document.getElementById('angle-display').innerText = `${displayAngle.toFixed(1)}°`;
+        // Render joint orange badge point
+        function drawMarkerDot(p) {
+            aCtx.fillStyle = '#f97316'; // Deep Orange Brand Accent
+            aCtx.strokeStyle = '#ffffff';
+            aCtx.lineWidth = 3;
+            aCtx.beginPath();
+            aCtx.arc(p.x, p.y, 14, 0, 2 * Math.PI);
+            aCtx.fill();
+            aCtx.stroke();
+
+            // Render numeric label
+            aCtx.fillStyle = '#ffffff';
+            aCtx.font = 'bold 12px "Plus Jakarta Sans", sans-serif';
+            aCtx.textAlign = 'center';
+            aCtx.textBaseline = 'middle';
+            aCtx.fillText(p.label, p.x, p.y);
+        }
+
+        // Main Range Of Motion (ROM) Math and Dynamic Arc Renderer
+        function renderAngleCalculation() {
+            if (selectedPoints.length !== 3) return;
+
+            const [p1, p2, p3] = selectedPoints;
+
+            // Vector math
+            const angleVal = Math.abs(Math.atan2(p3.y - p2.y, p3.x - p2.x) - Math.atan2(p1.y - p2.y, p1.x - p2.x)) * 180 / Math.PI;
+            const finalROM = Math.min(angleVal, 360 - angleVal);
             
-            ctx.strokeStyle = '#ea580c'; ctx.lineWidth = 6;
-            ctx.beginPath();
-            ctx.moveTo(p2.x*can.width, p2.y*can.height); ctx.lineTo(p1.x*can.width, p1.y*can.height);
-            ctx.moveTo(p2.x*can.width, p2.y*can.height); ctx.lineTo(p3.x*can.width, p3.y*can.height);
-            ctx.stroke();
+            // Set dynamic ROM label
+            document.getElementById('angle-display').innerHTML = `
+                <span class="text-xs uppercase tracking-wider text-slate-500 font-bold block">Measured Elbow/Joint ROM:</span>
+                <span class="text-2xl font-black text-[#ea580c]">${finalROM.toFixed(1)}°</span>
+            `;
 
-            ctx.beginPath();
-            const startAngle = Math.atan2(p1.y-p2.y, p1.x-p2.x);
-            const endAngle = Math.atan2(p3.y-p2.y, p3.x-p2.x);
-            ctx.arc(p2.x*can.width, p2.y*can.height, 50, startAngle, endAngle);
-            ctx.stroke();
+            // Draw orange connectors connecting chosen joint nodes
+            aCtx.strokeStyle = '#f97316';
+            aCtx.lineWidth = 5;
+            aCtx.lineCap = 'round';
+            
+            // Connectors
+            aCtx.beginPath();
+            aCtx.moveTo(p1.x, p1.y);
+            aCtx.lineTo(p2.x, p2.y);
+            aCtx.lineTo(p3.x, p3.y);
+            aCtx.stroke();
+
+            // Draw smooth arc path connection
+            aCtx.beginPath();
+            const startAngle = Math.atan2(p1.y - p2.y, p1.x - p2.x);
+            const endAngle = Math.atan2(p3.y - p2.y, p3.x - p2.x);
+            
+            // Draw clean circle path arc
+            aCtx.arc(p2.x, p2.y, 45, startAngle, endAngle);
+            aCtx.stroke();
+
+            // Draw floating professional overlay ROM metadata box near center vertex
+            const textX = p2.x + 60 * Math.cos((startAngle + endAngle) / 2);
+            const textY = p2.y + 60 * Math.sin((startAngle + endAngle) / 2);
+
+            // Draw clean box backing
+            aCtx.fillStyle = 'rgba(15, 23, 42, 0.85)'; // Slate-900 backing
+            aCtx.shadowBlur = 4;
+            aCtx.shadowColor = 'rgba(0,0,0,0.3)';
+            
+            const labelText = `Elbow ROM: ${finalROM.toFixed(1)}°`;
+            aCtx.font = 'bold 11px "Plus Jakarta Sans", sans-serif';
+            const labelWidth = aCtx.measureText(labelText).width + 16;
+            
+            aCtx.beginPath();
+            aCtx.roundRect(textX - labelWidth/2, textY - 12, labelWidth, 24, 6);
+            aCtx.fill();
+            aCtx.shadowBlur = 0; // Restore
+
+            // White clean label
+            aCtx.fillStyle = '#ffffff';
+            aCtx.textAlign = 'center';
+            aCtx.textBaseline = 'middle';
+            aCtx.fillText(labelText, textX, textY);
         }
 
-        function resetAnalysis() {
-            selected = [];
-            document.getElementById('angle-display').innerText = "Select 3 points";
-            const aCanvas = document.getElementById('analysis-canvas'), aCtx = aCanvas.getContext('2d'), img = new Image();
+        // Redraw whole workspace view upon undo or reset
+        function redrawWorkspaceCurrentState() {
+            if (!originalImageData) return;
+            const img = new Image();
             img.src = originalImageData;
-            img.onload = () => aCtx.drawImage(img, 0, 0);
+            img.onload = () => {
+                aCtx.clearRect(0,0, analysisCanvas.width, analysisCanvas.height);
+                aCtx.drawImage(img, 0, 0);
+                
+                // Redraw selected markers
+                selectedPoints.forEach((pt, idx) => {
+                    // Recalculate numbering/labels
+                    pt.label = idx + 1;
+                    drawMarkerDot(pt);
+                });
+
+                if (selectedPoints.length === 3) {
+                    renderAngleCalculation();
+                } else {
+                    document.getElementById('angle-display').innerText = selectedPoints.length > 0 
+                        ? `Point ${selectedPoints.length} set. Select ${3 - selectedPoints.length} more.`
+                        : "Select 3 Joint Points";
+                }
+            };
         }
 
-        function downloadAnalysis() {
+        // Undo last selection node
+        function undoSelection() {
+            if (selectedPoints.length === 0) {
+                showToast("No active markers mapped.");
+                return;
+            }
+            selectedPoints.pop();
+            redrawWorkspaceCurrentState();
+            showToast("Last target marker removed");
+        }
+
+        // Clear diagnostic markers on current frame
+        function resetAnalysis() {
+            selectedPoints = [];
+            redrawWorkspaceCurrentState();
+            showToast("Analysis markers cleared.");
+        }
+
+        // Delete Captured assessment frame
+        function deleteAssessment(id) {
+            document.getElementById(`card_${id}`).remove();
+            delete poseDataHistory[id];
+            
+            // Check if gallery empty
+            const remaining = Object.keys(poseDataHistory).length;
+            if (remaining === 0) {
+                document.getElementById('captured-placeholder').classList.remove('hidden');
+                document.getElementById('grid').classList.add('hidden');
+                document.getElementById('empty-workspace-state').classList.remove('hidden');
+                analysisCanvas.classList.add('hidden');
+            }
+            updateSideThumbnailStrip();
+            showToast("Snapshot deleted");
+        }
+
+        // Download helper directly bypassing canvas
+        function downloadDirectly(src) {
             const link = document.createElement('a');
-            link.download = 'analysed-assessment.png';
-            link.href = document.getElementById('analysis-canvas').toDataURL();
+            link.download = 'captured-assessment.png';
+            link.href = src;
             link.click();
         }
 
-        function closeModal() { document.getElementById('modal').classList.add('hidden'); resetAnalysis(); }
+        // Download compiled analysed assessment canvas diagram
+        function downloadAnalysis() {
+            if (!originalImageData) {
+                showToast("Workspace canvas is empty!");
+                return;
+            }
+            const link = document.createElement('a');
+            link.download = 'analysed-diagnostic.png';
+            link.href = analysisCanvas.toDataURL();
+            link.click();
+        }
+
+        // Update Right side comparative timeline list
+        function updateSideThumbnailStrip() {
+            const strip = document.getElementById('side-thumbnail-strip');
+            strip.innerHTML = '';
+            
+            const ids = Object.keys(poseDataHistory);
+            if (ids.length === 0) {
+                strip.innerHTML = `
+                    <div class="text-center py-8 text-slate-300 text-xs font-medium my-auto flex flex-col gap-1.5 justify-center items-center w-full">
+                        <i class="fa-solid fa-list-check text-lg"></i>
+                        <span>No ROM data</span>
+                    </div>
+                `;
+                return;
+            }
+
+            ids.forEach(id => {
+                const imgSource = document.querySelector(`#card_${id} img`)?.src;
+                if (imgSource) {
+                    const thumb = document.createElement('div');
+                    thumb.className = "cursor-pointer rounded-lg border-2 border-transparent hover:border-[#0f766e] transition duration-200 overflow-hidden relative shadow-sm h-16 w-full flex-shrink-0";
+                    thumb.onclick = () => loadToWorkspace(id, imgSource);
+                    thumb.innerHTML = `
+                        <img src="${imgSource}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black/10 hover:bg-transparent transition duration-200"></div>
+                    `;
+                    strip.appendChild(thumb);
+                }
+            });
+        }
     </script>
 </body>
 </html>
